@@ -13,7 +13,23 @@ register_layout()
 
 @server.route("/health")
 def health():
-    return jsonify(status="ok")
+    """Health check with database connectivity status."""
+    db_ok = False
+    try:
+        from app.db import _get_pool
+        p = _get_pool()
+        conn = p.getconn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+            db_ok = True
+        finally:
+            p.putconn(conn)
+    except Exception:
+        pass
+
+    status = "ok" if db_ok else "degraded"
+    return jsonify(status=status, database=db_ok), 200 if db_ok else 503
 
 
 if __name__ == "__main__":
