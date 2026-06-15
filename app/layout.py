@@ -13,7 +13,7 @@ from app.filters import (
     build_filter_bar,
     register_filter_callbacks,
 )
-from app.views import expansion, migration, quadrant
+from app.views import at_risk, expansion, migration, quadrant
 
 TAB_LABELS = ["Quadrant", "Migration", "Expansion Cases", "At-Risk"]
 TAB_IDS = ["quadrant", "migration", "expansion", "at-risk"]
@@ -84,6 +84,7 @@ def register_layout():
     quadrant.register_callbacks()
     migration.register_callbacks()
     expansion.register_callbacks()
+    at_risk.register_callbacks()
 
     @callback(
         Output("tab-content", "children"),
@@ -98,5 +99,5 @@ def register_layout():
         elif tab_value == "expansion":
             return expansion.layout()
         elif tab_value == "at-risk":
-            return html.Div("At-risk list — coming in U6.", className="empty-state")
+            return at_risk.layout()
         return html.Div("Unknown tab.")
