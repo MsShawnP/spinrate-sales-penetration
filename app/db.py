@@ -1,0 +1,300 @@
+"""Postgres connection pool and query functions for Cinderhaven SSOT.
+
+Uses psycopg2 directly (no ORM). Module-level connection pool via
+DATABASE_URL environment variable. Query results cached per filter
+combination; callers receive .copy() to prevent mutation of cache.
+"""
+
+import hashlib
+import logging
+import os
+
+import pandas as pd
+import psycopg2
+from psycopg2 import pool
+
+logger = logging.getLogger(__name__)
+
+# ── Connection pool ─────────────────────────────────────────────────
+_pool = None
+
+# Query timeout in milliseconds (30 seconds).
+_QUERY_TIMEOUT_MS = 30_000
+
+
+def _get_pool():
+    """Return the module-level connection pool, creating it on first call.
+
+    Raises RuntimeError if DATABASE_URL is not set so the app fails fast
+    at startup rather than producing a confusing runtime error.
+    """
+    global _pool
+    if _pool is not None:
+        return _pool
+
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        raise RuntimeError(
+            "DATABASE_URL environment variable is not set. "
+            "Set it to a postgresql:// connection string pointing at the Cinderhaven SSOT."
+        )
+
+    try:
+        _pool = pool.ThreadedConnectionPool(
+            minconn=1,
+            maxconn=5,
+            dsn=database_url,
+            options=f"-c statement_timeout={_QUERY_TIMEOUT_MS}",
+        )
+    except psycopg2.OperationalError as exc:
+        raise RuntimeError(
+            f"Could not connect to Cinderhaven SSOT database: {exc}"
+        ) from exc
+
+    return _pool
+
+
+def _execute_query(sql, params=None):
+    """Execute a parameterized query and return a pandas DataFrame.
+
+    Handles connection checkout/return and converts psycopg2 timeouts
+    into a graceful empty DataFrame with a logged warning.
+    """
+    p = _get_pool()
+    conn = p.getconn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, params or ())
+            cols = [desc[0] for desc in cur.description]
+            rows = cur.fetchall()
+        conn.commit()
+        return pd.DataFrame(rows, columns=cols)
+    except psycopg2.extensions.QueryCanceledError:
+        conn.rollback()
+        logger.warning("Query timed out after %d ms — returning empty DataFrame", _QUERY_TIMEOUT_MS)
+        return pd.DataFrame()
+    except psycopg2.Error as exc:
+        conn.rollback()
+        logger.error("Database query failed: %s", exc)
+        return pd.DataFrame()
+    finally:
+        p.putconn(conn)
+
+
+# ── Result cache ────────────────────────────────────────────────────
+_cache = {}
+
+
+def _cache_key(prefix, filters):
+    """Build a deterministic cache key from a prefix and filter dict."""
+    raw = f"{prefix}|{sorted(filters.items()) if filters else ''}"
+    return hashlib.md5(raw.encode()).hexdigest()
+
+
+def _cached(prefix, filters, loader):
+    """Return a cached DataFrame copy, populating on first call."""
+    key = _cache_key(prefix, filters)
+    if key not in _cache:
+        _cache[key] = loader()
+    return _cache[key].copy()
+
+
+def clear_cache():
+    """Clear the query cache. Useful for testing or manual refresh."""
+    _cache.clear()
+
+
+# ── Public query functions ──────────────────────────────────────────
+
+def get_scan_data(filters=None):
+    """Fetch POS scan data from fct_scan_data, optionally filtered.
+
+    Columns returned: sku, store_id, week_ending, units_sold, dollars_sold.
+
+    Supported filter keys:
+        retailers  - list of retailer names (joined via dim_stores)
+        region     - single region string
+        start_quarter / end_quarter - e.g. "Q1 2025" / "Q4 2025"
+    """
+    filters = filters or {}
+
+    def _load():
+        clauses = []
+        params = []
+
+        # Quarter filters translate to week_ending date ranges.
+        start_q = filters.get("start_quarter")
+        end_q = filters.get("end_quarter")
+        if start_q:
+            start_date = _quarter_start_date(start_q)
+            clauses.append("sd.week_ending >= %s")
+            params.append(start_date)
+        if end_q:
+            end_date = _quarter_end_date(end_q)
+            clauses.append("sd.week_ending <= %s")
+            params.append(end_date)
+
+        retailers = filters.get("retailers")
+        region = filters.get("region")
+
+        needs_store_join = bool(retailers) or bool(region)
+
+        if needs_store_join:
+            base = (
+                "SELECT sd.sku, sd.store_id, sd.week_ending, "
+                "sd.units_sold, sd.dollars_sold "
+                "FROM fct_scan_data sd "
+                "INNER JOIN dim_stores ds ON sd.store_id = ds.store_id"
+            )
+            if retailers:
+                placeholders = ", ".join(["%s"] * len(retailers))
+                clauses.append(f"ds.retailer IN ({placeholders})")
+                params.extend(retailers)
+            if region:
+                clauses.append("ds.region = %s")
+                params.append(region)
+        else:
+            base = (
+                "SELECT sd.sku, sd.store_id, sd.week_ending, "
+                "sd.units_sold, sd.dollars_sold "
+                "FROM fct_scan_data sd"
+            )
+
+        sql = base
+        if clauses:
+            sql += " WHERE " + " AND ".join(clauses)
+        sql += " ORDER BY sd.sku, sd.store_id, sd.week_ending"
+
+        return _execute_query(sql, params)
+
+    return _cached("scan_data", filters, _load)
+
+
+def get_distribution(filters=None):
+    """Fetch distribution/authorization data from fct_distribution.
+
+    Columns returned: sku, store_id, retailer_id, chain_name, region,
+    state, volume_tier, authorized_date, deauthorized_date, is_active,
+    weeks_with_sales, total_units, total_dollars, avg_weekly_units,
+    first_scan_week, last_scan_week.
+    """
+    filters = filters or {}
+
+    def _load():
+        clauses = ["fd.is_active = TRUE"]
+        params = []
+
+        retailers = filters.get("retailers")
+        region = filters.get("region")
+
+        if retailers:
+            placeholders = ", ".join(["%s"] * len(retailers))
+            clauses.append(f"fd.chain_name IN ({placeholders})")
+            params.extend(retailers)
+        if region:
+            clauses.append("fd.region = %s")
+            params.append(region)
+
+        sql = (
+            "SELECT fd.sku, fd.store_id, fd.retailer_id, fd.chain_name, "
+            "fd.region, fd.state, fd.volume_tier, fd.authorized_date, "
+            "fd.deauthorized_date, fd.is_active, fd.weeks_with_sales, "
+            "fd.total_units, fd.total_dollars, fd.avg_weekly_units, "
+            "fd.first_scan_week, fd.last_scan_week "
+            "FROM fct_distribution fd"
+        )
+        if clauses:
+            sql += " WHERE " + " AND ".join(clauses)
+        sql += " ORDER BY fd.sku, fd.store_id"
+
+        return _execute_query(sql, params)
+
+    return _cached("distribution", filters, _load)
+
+
+def get_stores():
+    """Fetch the full store dimension from dim_stores.
+
+    Columns returned: store_id, retailer, region, state, volume_tier.
+    Unfiltered -- returns the full universe.
+    """
+
+    def _load():
+        sql = (
+            "SELECT store_id, retailer, region, state, volume_tier "
+            "FROM dim_stores "
+            "ORDER BY store_id"
+        )
+        return _execute_query(sql)
+
+    return _cached("stores", {}, _load)
+
+
+def get_benchmarks():
+    """Fetch category-level benchmarks from dim_category_benchmarks.
+
+    Columns returned: product_line, sku_count, store_count,
+    avg_weekly_units_per_store, total_units, total_dollars,
+    avg_cogs, avg_msrp, avg_margin_per_unit, avg_margin_pct.
+    """
+
+    def _load():
+        sql = (
+            "SELECT product_line, sku_count, store_count, "
+            "avg_weekly_units_per_store, total_units, total_dollars, "
+            "avg_cogs, avg_msrp, avg_margin_per_unit, avg_margin_pct "
+            "FROM dim_category_benchmarks "
+            "ORDER BY product_line"
+        )
+        return _execute_query(sql)
+
+    return _cached("benchmarks", {}, _load)
+
+
+def get_products():
+    """Fetch SKU-to-product-line mapping from dim_products.
+
+    Columns returned: sku, product_name, product_line, wholesale_price.
+    """
+
+    def _load():
+        sql = (
+            "SELECT sku, product_name, product_line, wholesale_price "
+            "FROM dim_products "
+            "ORDER BY sku"
+        )
+        return _execute_query(sql)
+
+    return _cached("products", {}, _load)
+
+
+# ── Quarter helpers ─────────────────────────────────────────────────
+
+def _quarter_start_date(quarter_str):
+    """Convert 'Q1 2025' to the first day of that quarter as a date string.
+
+    Quarter boundaries:
+        Q1 = Jan 1, Q2 = Apr 1, Q3 = Jul 1, Q4 = Oct 1.
+    """
+    q, year = quarter_str.split()
+    q_num = int(q[1])
+    month = (q_num - 1) * 3 + 1
+    return f"{year}-{month:02d}-01"
+
+
+def _quarter_end_date(quarter_str):
+    """Convert 'Q4 2025' to the last day of that quarter as a date string.
+
+    Quarter boundaries:
+        Q1 = Mar 31, Q2 = Jun 30, Q3 = Sep 30, Q4 = Dec 31.
+    """
+    q, year = quarter_str.split()
+    q_num = int(q[1])
+    end_month = q_num * 3
+    if end_month in (1, 3, 5, 7, 8, 10, 12):
+        end_day = 31
+    elif end_month in (4, 6, 9, 11):
+        end_day = 30
+    else:
+        end_day = 28  # Feb -- no leap year concern for 2024-2025 data
+    return f"{year}-{end_month:02d}-{end_day:02d}"
