@@ -1,7 +1,7 @@
 # Plan — Spinrate Sales Penetration
 
 **Tier:** Heavy
-**Status:** Planned — ready for `/ce:work`
+**Status:** Implementation complete — ready for `/ce:review`
 
 ## Goal (2026-06-15)
 
@@ -9,7 +9,7 @@ Interactive penetration × velocity quadrant dashboard for the Lailara portfolio
 
 ## Focus
 
-`/ce:plan` complete. Plan at `docs/plans/2026-06-15-001-feat-penetration-velocity-quadrant-dashboard-plan.md`. Next: `/ce:work` to begin implementation (U1 scaffold first).
+All 8 implementation units complete. 138 tests passing. Next: deploy, `/ce:review`, `/ce:compound`.
 
 ## Tasks
 
@@ -18,13 +18,14 @@ Interactive penetration × velocity quadrant dashboard for the Lailara portfolio
 - [x] `/clarify` — requirements nailed
 - [x] `/ce:brainstorm` — full requirements doc with 24 requirements
 - [x] `/ce:plan` — Deep plan with 8 implementation units, doc reviewed
-- [ ] `/ce:work` — U1: Scaffold + shared infrastructure
-- [ ] `/ce:work` — U2: Data layer (Postgres, SPPD, ACV%, calculations)
-- [ ] `/ce:work` — U3: Quadrant chart view
-- [ ] `/ce:work` — U4: Migration view
-- [ ] `/ce:work` — U5: Expansion case list
-- [ ] `/ce:work` — U6: At-risk list
-- [ ] `/ce:work` — U7: Narrative intro + protagonist data
-- [ ] `/ce:work` — U8: Deployment + subdomain
+- [x] `/ce:work` — U1: Scaffold + shared infrastructure
+- [x] `/ce:work` — U2: Data layer (Postgres, SPPD, ACV%, calculations)
+- [x] `/ce:work` — U3: Quadrant chart view
+- [x] `/ce:work` — U4: Migration view
+- [x] `/ce:work` — U5: Expansion case list
+- [x] `/ce:work` — U6: At-risk list
+- [x] `/ce:work` — U7: Narrative intro + protagonist data
+- [x] `/ce:work` — U8: Deployment + subdomain
+- [ ] Deploy to Fly.io + DNS
 - [ ] `/ce:review`
 - [ ] `/ce:compound`

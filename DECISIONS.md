@@ -12,6 +12,11 @@
 - **Scope:** All interactive views in spinrate (migration periods, viz modes). Consider for other portfolio tools.
 - **Do not:** Show all options equally visible on first load. The default must tell the story without any user action.
 
+### 2026-06-15 — Runtime protagonist discovery (not hardcoded)
+- **Why:** The plan specified "static HTML" with protagonist SKUs from the SSOT, but hardcoding specific SKU IDs would break when the SSOT data changes. Instead, the narrative queries the database at page load and picks the best exemplar for each quadrant archetype dynamically. Falls back to a generic intro if the database is unreachable or has no good exemplars.
+- **Scope:** Narrative section in layout.py.
+- **Do not:** Hardcode SKU IDs in the narrative. The data-driven approach ensures the narrative always reflects current reality.
+
 ### 2026-06-15 — Three-tier at-risk scoring (level × trend)
 - **Why:** A binary "at risk / not at risk" flag loses the distinction between flat-but-low (fix on your timeline) and declining (act now before the buyer does). Adding the watchlist tier (above median but declining) catches problems before they cross the threshold.
 - **Scope:** At-risk list in spinrate. Pattern may apply to other tools that surface risk.

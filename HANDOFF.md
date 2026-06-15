@@ -1,28 +1,48 @@
 # Handoff — Spinrate Sales Penetration
 
-## 2026-06-15 (session 2)
+## 2026-06-15 (session 3)
 
-**Started from:** Requirements doc complete, no code, no plan.
+**Started from:** Plan complete and reviewed, no code written.
 
-**Did:** Ran `/ce:plan` (Deep tier). Dispatched repo-research-analyst and learnings-researcher agents — scanned doormath scaffold patterns, Cinderhaven SSOT schema, question-engine DB connection patterns. User confirmed Dash + Plotly stack and ACV% as default x-axis, strongly emphasized R9 detail legibility ("easy to see, no magnifying glass"). Produced 640-line implementation plan with 8 units (U1-U8). Ran confidence check + headless doc review (5 reviewers: coherence, feasibility, design-lens, scope-guardian, product-lens). Applied 4 safe_auto fixes: Fly.io region ord → iad, dim_category_benchmarks risk confirmed certain, psycopg2/SQLAlchemy reference clarified, clientside callback scope corrected.
+**Did:** Ran `/ce:work` and implemented all 8 units (U1–U8). Full Dash 3.x + Plotly 6.0 dashboard with 4 interactive views, narrative intro, and deployment config. 138 tests passing across 7 test files.
 
-**State:** Plan complete and reviewed at `docs/plans/2026-06-15-001-feat-penetration-velocity-quadrant-dashboard-plan.md`. No code written. 4 fixes applied. Remaining doc review findings (mobile/responsive gaps, narrative static-vs-live tension, product-lens observations) not yet walked through — available via deeper doc review if desired.
+**Commits this session:**
+- `d8615c6` U1 — Dash scaffold, design system, filters, brand frame, Dockerfile, fly.toml
+- `bd0e670` U2 — psycopg2 pool, SPPD/ACV%/indexed SPPD/velocity trend/at-risk scoring/expansion upside calculations (30 tests)
+- `24a1784` U3 — Quadrant bubble scatter, click-to-pin, indexed SPPD toggle, low-door flagging (26 tests)
+- `4f754ab` U4 — Migration view: arrow overlay, side-by-side, sankey; QoQ/custom/rolling (37 tests)
+- `dced537` U5 — Expansion case list: AG Grid of hidden gems with 3 benchmark projections (16 tests)
+- `7826f1c` U6 — At-risk list: act now/fix or rationalize/watchlist with signal transparency (20 tests)
+- `82ea26a` U7 — Data-driven narrative intro, 5 protagonist SKUs discovered at runtime (9 tests)
+- `c3e71b2` U8 — Health check with database connectivity status
 
-**Next:** Run `/ce:work` to begin implementation starting with U1 (scaffold). Or run deeper doc review first if the remaining findings warrant attention before coding.
+**State:** All code complete and tested. Not yet deployed. Not yet code-reviewed.
+
+**Next:**
+1. Deploy to Fly.io: `fly deploy`, `fly secrets set DATABASE_URL=<url>`, DNS CNAME `spinrate.lailarallc.com`, `fly certs create`
+2. Run `/ce:review` — code review pass
+3. Run `/ce:compound` — extract learnings
+4. Verify protagonist narrative renders with real SSOT data (may need to seed exemplar SKUs if archetypes aren't well-represented)
+
+## Issues encountered
+
+- **Mock path for lazy imports:** `patch("app.db")` fails when `app/__init__.py` is empty because the `db` submodule isn't loaded yet. Fix: `patch("app.db", create=True)`. Applies to expansion and at-risk test files.
+- **U5 subagent socket crash:** Subagent created expansion.py and wired layout.py but died before writing tests or committing. Recovery: verified files manually, wrote tests inline.
+- **numpy bool identity:** `np.True_ is True` is `False`. Use `==` not `is` for numpy boolean comparisons in assertions.
 
 ## Key context
 
-- **Stack decided:** Dash 3.x + Plotly 6.0 (matches doormath)
-- **Region:** Fly.io `iad` (co-located with Cinderhaven SSOT Postgres) — NOT `ord`
-- **X-axis:** ACV% weighted by volume tier (A=3, B=2, C=1)
-- **Detail cards (R9):** Minimum 320px wide, 16px+ body text, dark callout card pattern. User strongly emphasized legibility.
-- **dim_category_benchmarks:** Confirmed lacks percentile columns — must compute from fct_scan_data aggregation
-- **Clientside JS:** Handles opacity dimming + animations only. Detail card rendering requires server-side callback (Dash clientside callbacks can't render HTML components).
-- **Trailing periods:** 4 quarters for velocity trend
-- **Protagonist data:** Must verify/seed in U2
-- Data source: Cinderhaven SSOT (Postgres 16, Fly.io `iad`). Key tables: `fct_scan_data`, `fct_distribution`, `dim_stores`, `dim_category_benchmarks`. 156 weeks of POS data, 640 stores, 50 SKUs.
+- **Stack:** Dash 3.x + Plotly 6.0, psycopg2 direct (no ORM), Cinderhaven SSOT Postgres
+- **Region:** Fly.io `iad` (co-located with SSOT)
+- **138 tests** across: test_calculations (30), test_quadrant (26), test_migration (37), test_expansion (16), test_at_risk (20), test_narrative (9)
+- **Design system:** Lailara tokens throughout — Canvas, London greyscale, Chicago accent, HK teal sequential, Tokyo rose for risk, Singapore orange for warnings
+- **Interaction:** Click-to-pin via clientside JS (not hover), dark callout detail cards, AG Grid for tabular views
+- **Narrative:** Runtime protagonist discovery — queries SSOT for best exemplar per quadrant archetype; falls back to generic intro if data insufficient
 
 ## Previous sessions
 
+### 2026-06-15 (session 2)
+Ran `/ce:plan` (Deep tier). Produced 640-line plan with 8 units. Ran doc review (5 reviewers). Applied 4 safe_auto fixes.
+
 ### 2026-06-15 (session 1)
-Scaffolded repo. Confirmed Heavy tier. Ran `/clarify` and `/ce:brainstorm`. Requirements doc at `docs/brainstorms/2026-06-15-spinrate-quadrant-requirements.md` with 24 requirements, 5 acceptance examples, 6 key decisions.
+Scaffolded repo. Confirmed Heavy tier. Ran `/clarify` and `/ce:brainstorm`. Requirements doc with 24 requirements.
