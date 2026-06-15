@@ -1,7 +1,7 @@
 ---
 title: "feat: Penetration × Velocity Quadrant Dashboard"
 type: feat
-status: active
+status: completed
 date: 2026-06-15
 origin: docs/brainstorms/2026-06-15-spinrate-quadrant-requirements.md
 ---
