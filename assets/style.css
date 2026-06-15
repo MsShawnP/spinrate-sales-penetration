@@ -215,6 +215,82 @@
     }
 }
 
+/* ── Narrative intro (U7) ── */
+
+.narrative-section {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 48px 24px 32px;
+}
+
+.narrative-content {
+    max-width: 660px;
+}
+
+.narrative-title {
+    font-family: var(--ll-serif);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--ll-london-5);
+    letter-spacing: -0.02em;
+    margin: 0 0 16px 0;
+    line-height: 1.3;
+}
+
+.narrative-body {
+    font-family: var(--ll-sans);
+    font-size: 17px;
+    font-weight: 400;
+    color: var(--ll-london-20);
+    line-height: 1.6;
+    margin: 0 0 12px 0;
+    max-width: 660px;
+}
+
+.narrative-protagonist {
+    margin: 24px 0;
+    padding-left: 16px;
+    border-left: 3px solid var(--ll-london-85);
+}
+
+.narrative-archetype-label {
+    font-family: var(--ll-serif);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--ll-london-5);
+    margin: 0 0 4px 0;
+}
+
+.narrative-transition {
+    font-family: var(--ll-sans);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ll-london-35);
+    margin: 32px 0 0 0;
+    padding-top: 16px;
+    border-top: 1px solid var(--ll-london-85);
+}
+
+@media (max-width: 640px) {
+    .narrative-section {
+        padding: 32px 16px 24px;
+    }
+
+    .narrative-title {
+        font-size: 22px;
+    }
+
+    .narrative-body {
+        font-size: 15px;
+    }
+}
+
+@media print {
+    .narrative-section {
+        padding: 24px 0;
+    }
+}
+
 /* ── Quadrant view (U3) ── */
 
 /* Quadrant detail card container */
