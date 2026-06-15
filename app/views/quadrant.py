@@ -1,0 +1,596 @@
+"""Quadrant view — bubble scatter chart of SPPD vs ACV% with click-to-pin detail cards.
+
+Primary visualization for Spin Rate. Each bubble is a SKU positioned by
+velocity (SPPD, y-axis) and distribution breadth (ACV%, x-axis). Bubble
+size encodes total dollars. Quadrant dividing lines recompute from medians
+when filters change. Indexed SPPD toggle rescales the y-axis to
+category-relative performance.
+"""
+
+import json
+
+import numpy as np
+import pandas as pd
+from dash import Input, Output, State, callback, dcc, html, no_update
+import plotly.graph_objects as go
+
+from app.app import app
+from app.calculations import (
+    calculate_acv_pct,
+    calculate_indexed_sppd,
+    calculate_sppd,
+    calculate_velocity_trend,
+    days_in_quarter_range,
+)
+from app.charts import CHART_CONFIG, economist_layout
+from app.components import dark_callout_card
+from app.constants import (
+    CANVAS,
+    CHICAGO_20,
+    DISABLED,
+    FONT_SANS,
+    FONT_SERIF,
+    GRIDLINE,
+    INK,
+    QUADRANT_LABELS,
+    REFERENCE,
+    SPPD_FORMULA,
+    TEAL_SEQUENTIAL,
+    TEXT_SECONDARY,
+    WHITE,
+    fmt_dollars,
+    fmt_number,
+    fmt_pct,
+)
+
+# ── Configuration ─────────────────────────────────────────────────
+
+# Low-door-count threshold: markers below this get flagged styling.
+LOW_DOOR_THRESHOLD = 10
+
+# Bubble size bounds (pixels).
+_BUBBLE_SIZE_MIN = 8
+_BUBBLE_SIZE_MAX = 45
+
+
+# ── Helper functions ──────────────────────────────────────────────
+
+
+def _scale_bubble_sizes(dollars_series):
+    """Map total dollars to bubble marker sizes within readable bounds.
+
+    Uses square-root scaling so area is proportional to value, then
+    normalizes to the min/max pixel range.
+    """
+    if dollars_series.empty or dollars_series.max() == 0:
+        return pd.Series(dtype=float)
+
+    sqrt_vals = np.sqrt(dollars_series.clip(lower=0))
+    min_val = sqrt_vals.min()
+    max_val = sqrt_vals.max()
+
+    if max_val == min_val:
+        return pd.Series(_BUBBLE_SIZE_MIN + (_BUBBLE_SIZE_MAX - _BUBBLE_SIZE_MIN) / 2,
+                         index=dollars_series.index)
+
+    normalized = (sqrt_vals - min_val) / (max_val - min_val)
+    return _BUBBLE_SIZE_MIN + normalized * (_BUBBLE_SIZE_MAX - _BUBBLE_SIZE_MIN)
+
+
+def _assign_product_line_colors(product_lines):
+    """Map unique product lines to Hong Kong teal sequential palette colors.
+
+    Darkest teal (HK_5) goes to the first product line alphabetically,
+    lightest to the last, cycling if more lines than palette entries.
+    """
+    unique_lines = sorted(product_lines.unique())
+    palette = TEAL_SEQUENTIAL
+    color_map = {}
+    for i, pl in enumerate(unique_lines):
+        color_map[pl] = palette[i % len(palette)]
+    return color_map
+
+
+def _classify_quadrant(sppd, acv_pct, median_sppd, median_acv):
+    """Assign quadrant label based on position relative to medians."""
+    if sppd >= median_sppd and acv_pct >= median_acv:
+        return QUADRANT_LABELS["star"]
+    elif sppd >= median_sppd and acv_pct < median_acv:
+        return QUADRANT_LABELS["hidden_gem"]
+    elif sppd < median_sppd and acv_pct >= median_acv:
+        return QUADRANT_LABELS["wide_but_dead"]
+    else:
+        return QUADRANT_LABELS["question_mark"]
+
+
+def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False):
+    """Build the Plotly bubble scatter figure.
+
+    Parameters
+    ----------
+    chart_df : DataFrame
+        Must contain: sku, product_name, product_line, acv_pct,
+        sppd (or indexed_sppd if indexed_mode), total_dollars,
+        door_count, bubble_size, color, opacity, quadrant.
+    median_sppd : float
+        Horizontal dividing line y-value.
+    median_acv : float
+        Vertical dividing line x-value.
+    indexed_mode : bool
+        If True, y-axis shows indexed SPPD with 1.0 dividing line.
+    """
+    y_col = "indexed_sppd" if indexed_mode else "sppd"
+    y_label = "Indexed SPPD (vs category median)" if indexed_mode else "SPPD (units / store / day)"
+
+    fig = go.Figure()
+
+    color_map = _assign_product_line_colors(chart_df["product_line"])
+    product_lines_sorted = sorted(chart_df["product_line"].unique())
+
+    for pl in product_lines_sorted:
+        pl_data = chart_df[chart_df["product_line"] == pl]
+        color = color_map[pl]
+
+        # Separate low-door and normal markers for legend clarity.
+        normal = pl_data[pl_data["door_count"] >= LOW_DOOR_THRESHOLD]
+        low_door = pl_data[pl_data["door_count"] < LOW_DOOR_THRESHOLD]
+
+        if not normal.empty:
+            fig.add_trace(go.Scatter(
+                x=normal["acv_pct"],
+                y=normal[y_col],
+                mode="markers",
+                name=pl,
+                customdata=np.stack([
+                    normal["sku"],
+                    normal["product_name"],
+                    normal["product_line"],
+                    normal["total_dollars"],
+                    normal["door_count"],
+                    normal["sppd"],
+                    normal["quadrant"],
+                ], axis=-1),
+                marker=dict(
+                    size=normal["bubble_size"],
+                    color=color,
+                    opacity=normal["opacity"],
+                    line=dict(width=1, color=INK),
+                ),
+                hoverinfo="skip",
+                showlegend=True,
+            ))
+
+        if not low_door.empty:
+            fig.add_trace(go.Scatter(
+                x=low_door["acv_pct"],
+                y=low_door[y_col],
+                mode="markers",
+                name=f"{pl} (low doors)",
+                customdata=np.stack([
+                    low_door["sku"],
+                    low_door["product_name"],
+                    low_door["product_line"],
+                    low_door["total_dollars"],
+                    low_door["door_count"],
+                    low_door["sppd"],
+                    low_door["quadrant"],
+                ], axis=-1),
+                marker=dict(
+                    size=low_door["bubble_size"],
+                    color=color,
+                    opacity=0.4,
+                    line=dict(width=2, color=color, dash="dash"),
+                ),
+                hoverinfo="skip",
+                showlegend=True,
+            ))
+
+    # Quadrant dividing lines — add as shapes directly to avoid empty annotations.
+    fig.add_shape(
+        type="line",
+        x0=0, x1=1, xref="paper",
+        y0=median_sppd, y1=median_sppd, yref="y",
+        line=dict(dash="dash", color=REFERENCE, width=2),
+    )
+    fig.add_shape(
+        type="line",
+        x0=median_acv, x1=median_acv, xref="x",
+        y0=0, y1=1, yref="paper",
+        line=dict(dash="dash", color=REFERENCE, width=2),
+    )
+
+    # Quadrant corner labels positioned in paper coordinates (0-1 range)
+    # so they're robust regardless of data range.
+    quadrant_annotations = [
+        # Stars — top-right
+        dict(
+            x=0.75, y=0.92,
+            xref="paper", yref="paper",
+            text=QUADRANT_LABELS["star"],
+            showarrow=False,
+            font=dict(family=FONT_SANS, size=13, color=DISABLED),
+        ),
+        # Hidden Gems — top-left
+        dict(
+            x=0.25, y=0.92,
+            xref="paper", yref="paper",
+            text=QUADRANT_LABELS["hidden_gem"],
+            showarrow=False,
+            font=dict(family=FONT_SANS, size=13, color=DISABLED),
+        ),
+        # Wide but Dead — bottom-right
+        dict(
+            x=0.75, y=0.08,
+            xref="paper", yref="paper",
+            text=QUADRANT_LABELS["wide_but_dead"],
+            showarrow=False,
+            font=dict(family=FONT_SANS, size=13, color=DISABLED),
+        ),
+        # Question Marks — bottom-left
+        dict(
+            x=0.25, y=0.08,
+            xref="paper", yref="paper",
+            text=QUADRANT_LABELS["question_mark"],
+            showarrow=False,
+            font=dict(family=FONT_SANS, size=13, color=DISABLED),
+        ),
+    ]
+
+    x_max = chart_df["acv_pct"].max() if not chart_df.empty else 1.0
+
+    layout = economist_layout(
+        title=dict(
+            text="Penetration vs Velocity",
+            font=dict(family=FONT_SERIF, size=22, color=INK),
+        ),
+        xaxis=dict(
+            title=dict(text="ACV%", font=dict(family=FONT_SANS, size=14, color=TEXT_SECONDARY)),
+            showgrid=False,
+            showline=True,
+            linecolor=GRIDLINE,
+            tickformat=".0%",
+            tickfont=dict(family=FONT_SANS, size=12, color=TEXT_SECONDARY),
+            range=[0, max(x_max * 1.1, 0.1)],
+        ),
+        yaxis=dict(
+            title=dict(text=y_label, font=dict(family=FONT_SANS, size=14, color=TEXT_SECONDARY)),
+            showgrid=True,
+            gridcolor=GRIDLINE,
+            gridwidth=1,
+            showline=False,
+            tickfont=dict(family=FONT_SANS, size=12, color=TEXT_SECONDARY),
+            rangemode="tozero",
+        ),
+        annotations=quadrant_annotations,
+        margin=dict(l=70, r=20, t=70, b=50),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="left",
+            x=0,
+            font=dict(family=FONT_SANS, size=12, color=TEXT_SECONDARY),
+            bgcolor="rgba(0,0,0,0)",
+        ),
+    )
+
+    fig.update_layout(**layout)
+
+    return fig
+
+
+def _build_empty_figure():
+    """Return an empty figure with a 'no data' annotation."""
+    fig = go.Figure()
+    layout = economist_layout(
+        annotations=[dict(
+            text="No data matches the current filters.",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            showarrow=False,
+            font=dict(family=FONT_SANS, size=17, color=TEXT_SECONDARY),
+        )],
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+    )
+    fig.update_layout(**layout)
+    return fig
+
+
+# ── Layout ────────────────────────────────────────────────────────
+
+
+def layout():
+    """Return the complete quadrant view layout."""
+    return html.Div(
+        [
+            # Indexed SPPD toggle.
+            html.Div(
+                [
+                    html.Button(
+                        "Show Indexed SPPD",
+                        id="indexed-sppd-toggle",
+                        n_clicks=0,
+                        className="indexed-toggle-btn",
+                        style={
+                            "backgroundColor": WHITE,
+                            "color": CHICAGO_20,
+                            "border": f"2px solid {CHICAGO_20}",
+                            "padding": "8px 20px",
+                            "borderRadius": "2px",
+                            "fontFamily": FONT_SANS,
+                            "fontSize": "14px",
+                            "fontWeight": "600",
+                            "cursor": "pointer",
+                        },
+                    ),
+                ],
+                style={
+                    "display": "flex",
+                    "justifyContent": "flex-end",
+                    "marginBottom": "12px",
+                },
+            ),
+            # Indexed mode state store.
+            dcc.Store(id="indexed-mode", storage_type="memory", data=False),
+            # Chart area.
+            dcc.Graph(
+                id="quadrant-chart",
+                config=CHART_CONFIG,
+                style={"minHeight": "500px"},
+            ),
+            # SPPD formula note.
+            html.P(
+                SPPD_FORMULA,
+                className="formula-note",
+            ),
+            # Detail card area (populated by click-to-pin callback).
+            html.Div(
+                id="quadrant-detail-card",
+                style={"minWidth": "320px"},
+            ),
+        ],
+        id="quadrant-view",
+    )
+
+
+# ── Callbacks ─────────────────────────────────────────────────────
+
+
+def register_callbacks():
+    """Register all quadrant view callbacks."""
+
+    # Indexed SPPD toggle: flip the boolean store on each click.
+    app.clientside_callback(
+        """
+        function(n_clicks, current_mode) {
+            if (!n_clicks) return window.dash_clientside.no_update;
+            return !current_mode;
+        }
+        """,
+        Output("indexed-mode", "data"),
+        Input("indexed-sppd-toggle", "n_clicks"),
+        State("indexed-mode", "data"),
+        prevent_initial_call=True,
+    )
+
+    # Toggle button label update.
+    @callback(
+        Output("indexed-sppd-toggle", "children"),
+        Output("indexed-sppd-toggle", "style"),
+        Input("indexed-mode", "data"),
+    )
+    def _update_toggle_label(indexed_mode):
+        if indexed_mode:
+            return "Show Raw SPPD", {
+                "backgroundColor": CHICAGO_20,
+                "color": WHITE,
+                "border": f"2px solid {CHICAGO_20}",
+                "padding": "8px 20px",
+                "borderRadius": "2px",
+                "fontFamily": FONT_SANS,
+                "fontSize": "14px",
+                "fontWeight": "600",
+                "cursor": "pointer",
+            }
+        return "Show Indexed SPPD", {
+            "backgroundColor": WHITE,
+            "color": CHICAGO_20,
+            "border": f"2px solid {CHICAGO_20}",
+            "padding": "8px 20px",
+            "borderRadius": "2px",
+            "fontFamily": FONT_SANS,
+            "fontSize": "14px",
+            "fontWeight": "600",
+            "cursor": "pointer",
+        }
+
+    # Click-to-pin: clientside callback to capture clickData into selected-sku store.
+    # This is registered via app.clientside_callback so it runs in the browser.
+    app.clientside_callback(
+        "window.dash_clientside.spinrate.handle_click",
+        Output("selected-sku", "data"),
+        Input("quadrant-chart", "clickData"),
+        State("selected-sku", "data"),
+        prevent_initial_call=True,
+    )
+
+    # Main chart update callback.
+    @callback(
+        Output("quadrant-chart", "figure"),
+        Input("filter-state", "data"),
+        Input("indexed-mode", "data"),
+    )
+    def _update_quadrant_chart(filter_json, indexed_mode):
+        """Rebuild the quadrant chart when filters or indexed mode change."""
+        from app import db
+
+        filters = json.loads(filter_json) if filter_json else {}
+        indexed_mode = bool(indexed_mode)
+
+        try:
+            scan_df = db.get_scan_data(filters)
+            dist_df = db.get_distribution(filters)
+            stores_df = db.get_stores()
+            benchmarks_df = db.get_benchmarks()
+            products_df = db.get_products()
+        except Exception:
+            return _build_empty_figure()
+
+        if scan_df.empty or dist_df.empty:
+            return _build_empty_figure()
+
+        # Compute metrics.
+        start_q = filters.get("start_quarter", "Q1 2025")
+        end_q = filters.get("end_quarter", "Q4 2025")
+        days = days_in_quarter_range(start_q, end_q)
+
+        sppd_df = calculate_sppd(scan_df, days)
+        acv_df = calculate_acv_pct(dist_df, stores_df)
+
+        if sppd_df.empty or acv_df.empty:
+            return _build_empty_figure()
+
+        # Merge SPPD + ACV + product info.
+        chart_df = sppd_df.merge(acv_df[["sku", "acv_pct"]], on="sku", how="inner")
+        chart_df = chart_df.merge(
+            products_df[["sku", "product_name", "product_line"]], on="sku", how="left"
+        )
+
+        # Total dollars from scan data.
+        dollars = scan_df.groupby("sku")["dollars_sold"].sum().reset_index()
+        dollars.columns = ["sku", "total_dollars"]
+        chart_df = chart_df.merge(dollars, on="sku", how="left")
+        chart_df["total_dollars"] = chart_df["total_dollars"].fillna(0)
+
+        if chart_df.empty:
+            return _build_empty_figure()
+
+        # Indexed SPPD.
+        if indexed_mode and not products_df.empty and not benchmarks_df.empty:
+            indexed_df = calculate_indexed_sppd(sppd_df, benchmarks_df, products_df)
+            chart_df = chart_df.merge(
+                indexed_df[["sku", "indexed_sppd"]], on="sku", how="left"
+            )
+            chart_df["indexed_sppd"] = chart_df["indexed_sppd"].fillna(1.0)
+            median_sppd = 1.0  # Dividing line at index = 1.0
+        else:
+            chart_df["indexed_sppd"] = chart_df["sppd"]
+            median_sppd = chart_df["sppd"].median() if not chart_df.empty else 0
+
+        median_acv = chart_df["acv_pct"].median() if not chart_df.empty else 0
+
+        if not indexed_mode:
+            median_sppd = chart_df["sppd"].median()
+
+        # Bubble sizing.
+        chart_df["bubble_size"] = _scale_bubble_sizes(chart_df["total_dollars"])
+
+        # Default opacity (1.0 for normal, 0.4 for low-door handled in trace).
+        chart_df["opacity"] = 1.0
+
+        # Quadrant classification.
+        y_col_for_quadrant = "indexed_sppd" if indexed_mode else "sppd"
+        chart_df["quadrant"] = chart_df.apply(
+            lambda row: _classify_quadrant(
+                row[y_col_for_quadrant], row["acv_pct"], median_sppd, median_acv
+            ),
+            axis=1,
+        )
+
+        # Fill missing product names.
+        chart_df["product_name"] = chart_df["product_name"].fillna(chart_df["sku"])
+        chart_df["product_line"] = chart_df["product_line"].fillna("Unknown")
+
+        fig = _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode)
+        return fig
+
+    # Detail card callback — renders when selected-sku changes.
+    @callback(
+        Output("quadrant-detail-card", "children"),
+        Input("selected-sku", "data"),
+        State("filter-state", "data"),
+        State("indexed-mode", "data"),
+    )
+    def _update_detail_card(selected_sku, filter_json, indexed_mode):
+        """Render the dark callout detail card for the selected SKU."""
+        if not selected_sku:
+            return []
+
+        from app import db
+
+        filters = json.loads(filter_json) if filter_json else {}
+        indexed_mode = bool(indexed_mode)
+
+        try:
+            scan_df = db.get_scan_data(filters)
+            dist_df = db.get_distribution(filters)
+            stores_df = db.get_stores()
+            benchmarks_df = db.get_benchmarks()
+            products_df = db.get_products()
+        except Exception:
+            return html.P("Could not load detail data.", style={
+                "color": TEXT_SECONDARY, "fontFamily": FONT_SANS, "fontSize": "14px",
+            })
+
+        start_q = filters.get("start_quarter", "Q1 2025")
+        end_q = filters.get("end_quarter", "Q4 2025")
+        days = days_in_quarter_range(start_q, end_q)
+
+        sppd_df = calculate_sppd(scan_df, days)
+        acv_df = calculate_acv_pct(dist_df, stores_df)
+
+        # Get product info.
+        product_row = products_df[products_df["sku"] == selected_sku]
+        product_name = product_row["product_name"].iloc[0] if not product_row.empty else selected_sku
+        product_line = product_row["product_line"].iloc[0] if not product_row.empty else "Unknown"
+
+        # SPPD for this SKU.
+        sku_sppd = sppd_df[sppd_df["sku"] == selected_sku]
+        sppd_val = sku_sppd["sppd"].iloc[0] if not sku_sppd.empty else 0
+        door_count = int(sku_sppd["door_count"].iloc[0]) if not sku_sppd.empty else 0
+
+        # ACV%.
+        sku_acv = acv_df[acv_df["sku"] == selected_sku]
+        acv_val = sku_acv["acv_pct"].iloc[0] if not sku_acv.empty else 0
+
+        # Total dollars.
+        sku_dollars = scan_df[scan_df["sku"] == selected_sku]["dollars_sold"].sum()
+
+        # Quadrant label.
+        if not sppd_df.empty and not acv_df.empty:
+            merged = sppd_df.merge(acv_df[["sku", "acv_pct"]], on="sku", how="inner")
+
+            if indexed_mode and not benchmarks_df.empty and not products_df.empty:
+                indexed_df = calculate_indexed_sppd(sppd_df, benchmarks_df, products_df)
+                sku_indexed = indexed_df[indexed_df["sku"] == selected_sku]
+                y_val = sku_indexed["indexed_sppd"].iloc[0] if not sku_indexed.empty else sppd_val
+                med_sppd = 1.0
+            else:
+                y_val = sppd_val
+                med_sppd = merged["sppd"].median()
+
+            med_acv = merged["acv_pct"].median()
+            quadrant = _classify_quadrant(y_val, acv_val, med_sppd, med_acv)
+        else:
+            quadrant = "N/A"
+
+        # Velocity trend.
+        trend_df = calculate_velocity_trend(scan_df, products_df)
+        sku_trend = trend_df[trend_df["sku"] == selected_sku]
+        trend_label = sku_trend["trend"].iloc[0].capitalize() if not sku_trend.empty else "N/A"
+
+        rows = [
+            {"label": "SPPD", "value": f"{sppd_val:.4f}"},
+            {"label": "ACV%", "value": fmt_pct(acv_val)},
+            {"label": "Total Dollars", "value": fmt_dollars(sku_dollars)},
+            {"label": "Door Count", "value": fmt_number(door_count)},
+            {"label": "Quadrant", "value": quadrant},
+            {"label": "Velocity Trend", "value": trend_label},
+        ]
+
+        return dark_callout_card(
+            title=product_name,
+            subtitle=product_line,
+            rows=rows,
+        )

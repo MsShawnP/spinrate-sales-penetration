@@ -214,3 +214,45 @@
         transition-duration: 0.01ms !important;
     }
 }
+
+/* ── Quadrant view (U3) ── */
+
+/* Quadrant detail card container */
+#quadrant-detail-card {
+    min-width: 320px;
+}
+
+#quadrant-detail-card .dark-callout {
+    min-width: 320px;
+    font-size: 16px;
+}
+
+/* Indexed SPPD toggle button */
+.indexed-toggle-btn {
+    transition: background-color 200ms ease-out, color 200ms ease-out;
+}
+
+.indexed-toggle-btn:hover {
+    opacity: 0.9;
+}
+
+/* Plotly chart marker transition for opacity dimming */
+.js-plotly-plot .plotly .scatterlayer .trace .points path {
+    transition: opacity 200ms ease-out;
+}
+
+/* Quadrant chart container */
+#quadrant-view {
+    position: relative;
+}
+
+/* Mobile responsive quadrant */
+@media (max-width: 640px) {
+    #quadrant-detail-card {
+        min-width: 100%;
+    }
+
+    #quadrant-detail-card .dark-callout {
+        min-width: 100%;
+    }
+}

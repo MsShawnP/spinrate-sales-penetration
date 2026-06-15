@@ -13,6 +13,7 @@ from app.filters import (
     build_filter_bar,
     register_filter_callbacks,
 )
+from app.views import quadrant
 
 TAB_LABELS = ["Quadrant", "Migration", "Expansion Cases", "At-Risk"]
 TAB_IDS = ["quadrant", "migration", "expansion", "at-risk"]
@@ -80,6 +81,7 @@ def register_layout():
     )
 
     register_filter_callbacks()
+    quadrant.register_callbacks()
 
     @callback(
         Output("tab-content", "children"),
@@ -88,7 +90,7 @@ def register_layout():
     def _render_tab(tab_value):
         """Render the selected view's layout."""
         if tab_value == "quadrant":
-            return html.Div("Quadrant chart — coming in U3.", className="empty-state")
+            return quadrant.layout()
         elif tab_value == "migration":
             return html.Div("Migration view — coming in U4.", className="empty-state")
         elif tab_value == "expansion":
