@@ -1,0 +1,38 @@
+# Environment and secrets
+.env
+.env.*
+*.key
+credentials.*
+
+# Node
+node_modules/
+dist/
+build/
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data files (raw data stays local)
+data/raw/
+*.csv
+*.xlsx
+*.xls
+!data/synthetic/*.csv
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Logs
+*.log
