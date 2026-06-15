@@ -1,0 +1,216 @@
+/* Spin Rate — project-specific overrides only.
+   Design tokens live in lailara-frame.css (do not duplicate). */
+
+/* Tab styling */
+.custom-tabs {
+    border-bottom: 2px solid var(--ll-london-85);
+    margin-bottom: var(--ll-space-lg);
+}
+
+.custom-tab {
+    font-family: var(--ll-sans);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ll-london-35);
+    padding: 12px 20px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: color var(--ll-duration-fast) var(--ll-ease-out);
+}
+
+.custom-tab:hover {
+    color: var(--ll-london-20);
+}
+
+.custom-tab--selected {
+    color: var(--ll-chicago-20);
+    border-bottom-color: var(--ll-chicago-20);
+}
+
+/* Filter bar */
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ll-space-base);
+    align-items: flex-end;
+    padding: var(--ll-space-base) 0;
+    border-bottom: 1px solid var(--ll-london-85);
+    margin-bottom: var(--ll-space-lg);
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ll-space-xs);
+    min-width: 180px;
+}
+
+.filter-group label {
+    font-family: var(--ll-sans);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ll-london-35);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: var(--ll-space-3xl) var(--ll-space-lg);
+    color: var(--ll-london-35);
+    font-family: var(--ll-sans);
+    font-size: 17px;
+}
+
+.empty-state button {
+    margin-top: var(--ll-space-base);
+    background: var(--ll-chicago-20);
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: var(--ll-radius);
+    font-family: var(--ll-sans);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.empty-state button:hover {
+    background: var(--ll-chicago-10);
+}
+
+/* Error banner */
+.error-banner {
+    background: var(--ll-red-95);
+    color: var(--ll-red-18);
+    padding: var(--ll-space-md) var(--ll-space-base);
+    border-radius: var(--ll-radius);
+    font-family: var(--ll-sans);
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: var(--ll-space-sm);
+}
+
+/* Loading spinner override */
+._dash-loading-callback {
+    background-color: rgba(245, 243, 238, 0.7) !important;
+}
+
+/* Dark callout card */
+.dark-callout {
+    background: var(--ll-card-bg);
+    color: var(--ll-card-text);
+    padding: var(--ll-space-base) var(--ll-space-lg);
+    border-radius: var(--ll-radius);
+    margin: var(--ll-space-base) 0;
+    transition: opacity var(--ll-duration-normal) var(--ll-ease-out);
+}
+
+.dark-callout-title {
+    font-family: var(--ll-sans);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ll-card-text);
+    margin-bottom: var(--ll-space-sm);
+}
+
+.dark-callout-subtitle {
+    font-family: var(--ll-sans);
+    font-size: 14px;
+    color: var(--ll-card-subtitle);
+}
+
+.dark-callout-row {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--ll-space-xs) 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    font-family: var(--ll-sans);
+    font-size: 14px;
+    color: var(--ll-card-item);
+}
+
+.dark-callout-row:last-child {
+    border-bottom: none;
+}
+
+/* Annotation / insight line */
+.insight-line {
+    border-left: 3px solid var(--ll-london-85);
+    padding: var(--ll-space-sm) var(--ll-space-base);
+    font-family: var(--ll-sans);
+    font-size: 15px;
+    color: var(--ll-london-35);
+    margin: var(--ll-space-base) 0;
+    line-height: 1.5;
+}
+
+/* SPPD formula note */
+.formula-note {
+    font-family: var(--ll-sans);
+    font-size: 13px;
+    color: var(--ll-london-40);
+    font-style: italic;
+    padding: var(--ll-space-sm) 0;
+    border-top: 1px solid var(--ll-london-85);
+    margin-top: var(--ll-space-base);
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+    .filter-bar {
+        flex-direction: column;
+        gap: var(--ll-space-sm);
+    }
+
+    .filter-group {
+        min-width: 100%;
+    }
+
+    .custom-tabs {
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Print — hide interactive controls */
+@media print {
+    .filter-bar,
+    .custom-tabs,
+    .dark-callout { display: none; }
+}
+
+/* Skip to content link */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--ll-chicago-20);
+    color: white;
+    padding: 8px 16px;
+    z-index: 100;
+    font-family: var(--ll-sans);
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
+/* Focus visible */
+*:focus-visible {
+    outline: 2px solid var(--ll-london-20);
+    outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}
