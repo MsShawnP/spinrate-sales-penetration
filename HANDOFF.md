@@ -1,26 +1,18 @@
 # Handoff — Spinrate Sales Penetration
 
-## Current phase
+## 2026-06-15 16:45
 
-Scaffolding complete. No code written yet.
+**Started from:** Empty directory with only `quadrant-brainstorm.md`.
 
-## What exists
+**Did:** Scaffolded repo. Confirmed Heavy tier. Ran `/clarify` and `/ce:brainstorm` (Deep-feature). Scanned doormath and Cinderhaven SSOT schemas — all required data exists. Produced full requirements doc with 24 requirements, acceptance examples, and key decisions. Updated brainstorm doc with all session decisions.
 
-- `quadrant-brainstorm.md` — full brainstorm with business question, core construction, inputs/outputs, Cinderhaven angle
-- Git repo initialized, .gitignore covers secrets and data files
-- README follows Lailara template
-- State files created (PLAN, HANDOFF, DECISIONS, FAILURES)
+**State:** Repo scaffolded, requirements doc complete at `docs/brainstorms/2026-06-15-spinrate-quadrant-requirements.md`. No code written. All product decisions resolved — no blockers for planning.
 
-## What's next
-
-1. Confirm project tier (Medium vs Heavy)
-2. Run `/clarify` to nail down requirements
-3. Choose tech stack — brainstorm says "interactive dashboard" so need to decide React vs Dash vs something else
-4. Design data model — depends on tool #1 (doormath-sales-penetration?) outputs
+**Next:** Run `/ce:plan` against the requirements doc. Key planning decisions: stack selection (interactive dashboard framework), data connection pattern (direct Postgres vs API layer), component architecture, whether Cinderhaven data already has protagonist items per quadrant or needs seeding.
 
 ## Key context
 
-- Builds on "tool #1" which provides ACV%, door counts by item — check doormath-sales-penetration for schema
-- SPPD (sales per point of distribution) is the velocity metric — brainstorm notes it's "the most commonly miscalculated metric in the building"
-- Cinderhaven synthetic data needs deliberate protagonist items: one star, one hidden gem, one wide-but-dead, one question mark
-- Chart conventions carry over from UCI work (palette constants, coord_cartesian, labeled medians)
+- Data source: Cinderhaven SSOT (Postgres 16, Fly.io). Key tables: `fct_scan_data`, `fct_distribution`, `dim_stores`, `dim_category_benchmarks`. 156 weeks of POS data, 640 stores, 50 SKUs.
+- Doormath data model stable — both tools query SSOT independently, no pipeline dependency.
+- 5 protagonist SKUs needed: one per quadrant archetype + one migration story.
+- Lailara design system applies (colors, typography, chart rules).
