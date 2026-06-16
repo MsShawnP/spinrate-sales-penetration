@@ -19,7 +19,7 @@ def health():
         from app.db import _get_pool
         from psycopg2 import pool as _pool_mod
         p = _get_pool()
-        conn = p.getconn(timeout=3)
+        conn = p.getconn()
         try:
             with conn.cursor() as cur:
                 cur.execute("SELECT 1")

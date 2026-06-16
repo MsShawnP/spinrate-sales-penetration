@@ -2,6 +2,24 @@
 
 *What didn't work and why, so we don't repeat it.*
 
+### 2026-06-16 — psycopg2 Decimal types break Plotly 6.0 marker arrays
+- **What happened:** Quadrant chart rendered blank — all four views showed empty/error states despite the narrative intro pulling real data. The `except Exception` in the callback silently caught the error and returned an empty figure.
+- **Root cause:** psycopg2 returns Postgres `numeric` columns as Python `Decimal` objects. `np.sqrt(Decimal)` produces a Decimal-backed Series (`dtype: object`). Plotly 6.0 rejects non-float arrays for `marker.size` with `ValueError: Input value is not numeric`. Plotly 5.x was lenient about this.
+- **Fix:** Cast Decimal columns to float in `_execute_query()` (db.py line 81) — one fix at the data layer instead of patching individual views.
+- **Lesson:** When psycopg2 feeds a Plotly 6.0 pipeline, always cast Decimal to float at the DataFrame construction point. Don't patch downstream functions. Also: bare `except` blocks that return empty figures hide the real error — the narrative worked fine because it only used the data for string formatting, not Plotly arrays.
+
+### 2026-06-16 — Flycast hostname unreachable from local dev
+- **What happened:** Copied `DATABASE_URL` from cinderhaven-data-platform `.env`. Connection failed with `could not translate host name "cinderhaven-db.flycast"`.
+- **Root cause:** `.flycast` is Fly.io's private DNS, only resolvable inside their network. Local dev needs `localhost:5432/cinderhaven`.
+- **Fix:** Used the-question-engine's `.env` which points to localhost. Other projects (recall-blast-radius, trade-spend-leakage, etc.) also use localhost.
+- **Lesson:** For local dev of any Cinderhaven tool, use a sibling project's `.env` that points to localhost, not the data-platform `.env` which uses the Fly.io internal hostname.
+
+### 2026-06-16 — Dash 4.x injects purple accent-color on dropdown controls
+- **What happened:** Dropdown borders appeared purple despite all CSS using correct Chicago-20 navy tokens.
+- **Root cause:** Dash 4.x sets `accent-color: rgb(127, 75, 196)` directly on `.dash-dropdown` button elements. Setting `accent-color` on `:root` doesn't cascade because the element-level style has higher specificity.
+- **Fix:** Override with `accent-color: var(--ll-chicago-20) !important` on both `:root` and `.dash-dropdown`.
+- **Lesson:** When using Dash 4.x with a custom design system, override `accent-color` on `.dash-dropdown` specifically, not just `:root`.
+
 ### 2026-06-15 — Mock path `patch("app.db")` fails on lazy imports
 - **What happened:** Tests using `patch("app.db")` raised `AttributeError: <module 'app'> does not have the attribute 'db'` because `app/__init__.py` is empty and `db` is imported lazily inside functions with `from app import db`.
 - **Root cause:** `unittest.mock.patch` checks that the target attribute exists before patching. When the `db` submodule hasn't been imported yet, it doesn't exist as an attribute on the `app` package.

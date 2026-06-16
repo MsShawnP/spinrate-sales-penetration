@@ -2,6 +2,11 @@
 
 *Durable choices with rationale. Updated as decisions are made.*
 
+### 2026-06-16 — Cast Decimal to float at the data layer, not in views
+- **Why:** psycopg2 returns Postgres `numeric` columns as Python `Decimal`. Plotly 6.0 rejects non-float arrays. Patching individual view functions would require N fixes across N views and miss future views. Casting in `_execute_query()` fixes it once for all consumers.
+- **Scope:** All Cinderhaven-backed Dash tools using psycopg2 + Plotly 6.0. Apply the same pattern to Doormath and future tools.
+- **Do not:** Cast in individual view functions, calculation functions, or chart-building functions. The conversion belongs at the data boundary.
+
 ### 2026-06-15 — SSOT architecture: no tool-to-tool pipeline
 - **Why:** Each tool in the 5-tool suite queries the Cinderhaven data platform independently. No tool consumes another tool's output. This keeps tools independently deployable, testable, and debuggable. If doormath changes its internals, spinrate doesn't break.
 - **Scope:** All 5 tools in the sales analytics suite.

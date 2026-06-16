@@ -1,5 +1,26 @@
 # Handoff — Spinrate Sales Penetration
 
+## 2026-06-16 (session 4)
+
+**Started from:** All 8 units implemented, 138 tests passing. Needed code review, then deploy.
+
+**Did:** Ran `/ce:review` (11-agent, 22 findings fixed). Created private GitHub repo. Set up local dev with localhost Postgres. Diagnosed and fixed two runtime bugs: psycopg2 Decimal-to-float cast at db layer (all four views), Dash 4.x purple accent-color override. Verified all four tabs render with live SSOT data.
+
+**State:** All views rendering with real data. 138 tests passing. Pushed to GitHub. Remaining review findings (#16, #19, #20, #24, #27-29) are P2/P3. Not yet deployed to Fly.io.
+
+**Next:**
+1. Deploy to Fly.io: `fly deploy`, `fly secrets set DATABASE_URL=<url>`, DNS CNAME `spinrate.lailarallc.com`, `fly certs create`
+2. Run `/ce:compound` — extract learnings
+3. Verify protagonist narrative with production SSOT data
+4. Address remaining P2/P3 review findings in a follow-up session
+
+## Issues encountered (session 4)
+
+- **Flycast hostname not reachable locally:** cinderhaven-data-platform `.env` uses `cinderhaven-db.flycast` — only works inside Fly.io private network. Use the-question-engine's `.env` which points to `localhost:5432/cinderhaven` for local dev.
+- **psycopg2 Decimal vs Plotly 6.0:** Postgres `numeric` columns come back as Python `Decimal`. Plotly 6.0 rejects `Decimal`-backed Series for marker.size (Plotly 5.x was lenient). Fixed by casting in `_execute_query()`.
+- **Dash 4.x purple accent-color:** Dash injects `accent-color: rgb(127, 75, 196)` directly on `.dash-dropdown` elements. Override with `!important` on both `:root` and `.dash-dropdown`.
+- **Port 8050 collision:** Doormath from a prior session can squat on 8050. Kill stale Python processes before starting Spinrate.
+
 ## 2026-06-15 (session 3)
 
 **Started from:** Plan complete and reviewed, no code written.
