@@ -8,6 +8,12 @@
 - **Fix:** Steepened fading decline to 1.3→0.4 (matching the at_risk archetype, 69% drop). The archetype velocity multiplier (2.2-3.0) still keeps fading SKUs above median, while the steeper decline registers as "declining" in the OLS regression.
 - **Lesson:** When designing synthetic data decline curves for OLS-based trend detection, the decline must be steep enough to overcome seasonal variation in the raw data. Test decline factors against the actual trend calculation before seeding — don't assume a "moderate" decline will register.
 
+### 2026-06-16 — Fading archetype decline too shallow, masked by Q4 seasonal noise
+- **What happened:** Added "fading" archetype to Cinderhaven seed data with decline factor 1.15→0.70 (39% drop). Expected above-median + declining = watchlist tier. Got 0 watchlist items — all fading SKUs registered as "flat" trend.
+- **Root cause:** The Q4 seasonal multiplier boosts raw values 30-40% every year, creating a sawtooth pattern. OLS regression over 8 quarters sees the seasonal bumps as noise that cancels the 39% decline, producing a normalized slope within the ±5% flat threshold.
+- **Fix:** Steepened fading decline to 1.3→0.4 (69% drop, matching at_risk archetype). The archetype velocity multiplier (2.2-3.0) keeps fading SKUs above median while the steeper decline registers clearly in OLS.
+- **Lesson:** When synthetic data has seasonal multipliers, decline factors must be steep enough to overcome the seasonal amplitude in the trend detection algorithm. Test archetype patterns against the actual trend calculation before committing to a full reseed.
+
 ### 2026-06-16 — Plotly 6.0 binary-encodes numpy arrays, breaks Dash 3.x charts
 - **What happened:** Quadrant chart callback returned 200 with valid-looking data, but the chart rendered empty — zero data points visible.
 - **Root cause:** Plotly Python 6.0's `.to_plotly_json()` serializes numpy arrays as `{dtype: "f8", bdata: "base64..."}`. Plotly.js 3.6.0 (bundled with Dash 3.x) cannot decode this binary format — the browser receives Object instances with no `.length`, so traces render with 0 points.
