@@ -1,33 +1,46 @@
 /* Spin Rate — project-specific overrides only.
    Design tokens live in lailara-frame.css (do not duplicate). */
 
-/* Tab styling */
+/* Tab styling — !important overrides Dash's inline styles */
 .custom-tabs {
-    border-bottom: 2px solid var(--ll-london-85);
+    border-bottom: 2px solid var(--ll-london-85) !important;
     margin-bottom: var(--ll-space-lg);
 }
 
 .custom-tab {
-    font-family: var(--ll-sans);
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--ll-london-35);
-    padding: 12px 20px;
-    border: none;
-    background: transparent;
+    font-family: var(--ll-sans) !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    color: var(--ll-london-35) !important;
+    padding: 12px 20px !important;
+    border: none !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    background: transparent !important;
     cursor: pointer;
-    border-bottom: 3px solid transparent;
+    border-bottom: 3px solid transparent !important;
     margin-bottom: -2px;
     transition: color var(--ll-duration-fast) var(--ll-ease-out);
 }
 
 .custom-tab:hover {
-    color: var(--ll-london-20);
+    color: var(--ll-london-20) !important;
 }
 
 .custom-tab--selected {
-    color: var(--ll-chicago-20);
-    border-bottom-color: var(--ll-chicago-20);
+    color: var(--ll-chicago-20) !important;
+    border-bottom: 3px solid var(--ll-chicago-20) !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    background: transparent !important;
+}
+
+/* Dash dropdown — override Dash 4.x default purple accent */
+.dash-dropdown {
+    accent-color: var(--ll-chicago-20) !important;
+    outline-color: var(--ll-chicago-20) !important;
 }
 
 /* Filter bar */

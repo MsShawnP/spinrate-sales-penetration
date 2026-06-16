@@ -175,6 +175,9 @@
   --ll-space-2xl:  48px;
   --ll-space-3xl:  60px;
 
+  /* Browser accent — overrides native purple on form controls */
+  accent-color: var(--ll-chicago-20);
+
   /* Motion */
   --ll-duration-fast:   100ms;
   --ll-duration-normal: 200ms;

@@ -9,6 +9,7 @@ import hashlib
 import logging
 import os
 import threading
+from decimal import Decimal
 
 import pandas as pd
 import psycopg2
@@ -50,7 +51,7 @@ def _get_pool():
                 minconn=1,
                 maxconn=5,
                 dsn=database_url,
-                options=f"-c statement_timeout={_QUERY_TIMEOUT_MS}",
+                options=f"-c statement_timeout={_QUERY_TIMEOUT_MS} -c search_path=public_marts,public",
             )
         except psycopg2.OperationalError as exc:
             raise RuntimeError(
@@ -68,7 +69,7 @@ def _execute_query(sql, params=None):
     """
     p = _get_pool()
     try:
-        conn = p.getconn(timeout=5)
+        conn = p.getconn()
     except pool.PoolError:
         logger.error("Connection pool exhausted — returning empty DataFrame")
         return pd.DataFrame()
@@ -78,7 +79,12 @@ def _execute_query(sql, params=None):
             cols = [desc[0] for desc in cur.description]
             rows = cur.fetchall()
         conn.commit()
-        return pd.DataFrame(rows, columns=cols)
+        df = pd.DataFrame(rows, columns=cols)
+        for col in df.columns:
+            if df[col].dtype == object and len(df) > 0:
+                if isinstance(df[col].iloc[0], Decimal):
+                    df[col] = df[col].astype(float)
+        return df
     except psycopg2.extensions.QueryCanceledError:
         conn.rollback()
         logger.warning("Query timed out after %d ms — returning empty DataFrame", _QUERY_TIMEOUT_MS)
