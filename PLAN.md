@@ -26,6 +26,6 @@ All 8 units complete, code reviewed (22 findings fixed), all four views verified
 - [x] `/ce:work` — U6: At-risk list
 - [x] `/ce:work` — U7: Narrative intro + protagonist data
 - [x] `/ce:work` — U8: Deployment + subdomain
-- [ ] Deploy to Fly.io + DNS
+- [x] Deploy to Fly.io + DNS
 - [x] `/ce:review` — 11-agent review, 22 findings fixed, 2 runtime bugs fixed
 - [ ] `/ce:compound`
