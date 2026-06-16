@@ -2,16 +2,15 @@
 
 ## 2026-06-16 (session 5b — context continuation)
 
-**Started from:** Context compaction mid-session. At-risk three-tier scoring verification in progress — fading archetype seeded but watchlist tier had 0 items. Earlier UI fixes committed in `f24afda`.
+**Started from:** Context compaction mid-session. At-risk three-tier scoring verification in progress — fading archetype seeded but watchlist tier had 0 items.
 
-**Did:** Diagnosed fading archetype decline too shallow (1.15→0.70 masked by Q4 seasonal bump in OLS). Steepened to 1.3→0.4 in Cinderhaven seed_scan_data.py. Re-seeded + rebuilt dbt mart. Confirmed all three tiers: 3 Act Now, 22 Fix or Rationalize, 3 Watchlist. 138 tests passing.
+**Did:** Diagnosed fading decline too shallow (1.15→0.70 masked by Q4 seasonal bump). Steepened to 1.3→0.4, re-seeded, rebuilt dbt. Confirmed 3 Act Now / 22 Fix or Rationalize / 3 Watchlist. Deployed to Fly.io. DNS via Cloudflare API, SSL cert issued.
 
-**State:** All views rendering correctly. Three-tier at-risk scoring confirmed with data in all tiers. 138 tests passing. Uncommitted changes: at_risk.py trend fix + Cinderhaven fading decline steepened.
+**State:** Live at https://spinrate.lailarallc.com. All views working. 138 tests passing. All pushed.
 
 **Next:**
-1. Commit at-risk fix (at_risk.py + Cinderhaven seed changes)
-2. Deploy to Fly.io: `fly deploy`, `fly secrets set DATABASE_URL=<url>`, DNS CNAME `spinrate.lailarallc.com`, `fly certs create`
-3. Run `/ce:compound` — extract learnings
+1. Run `/ce:compound` — extract learnings
+2. EDI fixes (#9, #10, #11) — separate session from edi-reconciliation-tool directory
 
 ## 2026-06-16 (session 5)
 
