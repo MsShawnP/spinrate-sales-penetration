@@ -1,5 +1,18 @@
 # Handoff — Spinrate Sales Penetration
 
+## 2026-06-16 (session 5b — context continuation)
+
+**Started from:** Context compaction mid-session. At-risk three-tier scoring verification in progress — fading archetype seeded but watchlist tier had 0 items. Earlier UI fixes committed in `f24afda`.
+
+**Did:** Diagnosed fading archetype decline too shallow (1.15→0.70 masked by Q4 seasonal bump in OLS). Steepened to 1.3→0.4 in Cinderhaven seed_scan_data.py. Re-seeded + rebuilt dbt mart. Confirmed all three tiers: 3 Act Now, 22 Fix or Rationalize, 3 Watchlist. 138 tests passing.
+
+**State:** All views rendering correctly. Three-tier at-risk scoring confirmed with data in all tiers. 138 tests passing. Uncommitted changes: at_risk.py trend fix + Cinderhaven fading decline steepened.
+
+**Next:**
+1. Commit at-risk fix (at_risk.py + Cinderhaven seed changes)
+2. Deploy to Fly.io: `fly deploy`, `fly secrets set DATABASE_URL=<url>`, DNS CNAME `spinrate.lailarallc.com`, `fly certs create`
+3. Run `/ce:compound` — extract learnings
+
 ## 2026-06-16 (session 5)
 
 **Started from:** Context continuation — data variance fixed, quadrant `.tolist()` applied but unverified, migration/expansion/at-risk unchecked for Plotly 6.0 binary encoding, three UI issues queued.

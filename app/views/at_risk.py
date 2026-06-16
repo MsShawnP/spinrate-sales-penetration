@@ -107,7 +107,13 @@ def build_at_risk_data(filters):
         return pd.DataFrame(), pd.DataFrame(), {}
 
     indexed_df = calculate_indexed_sppd(sppd_df, benchmarks_df, products_df)
-    trend_df = calculate_velocity_trend(scan_df, products_df)
+
+    # Trend uses full history (no date filter) so seasonal patterns don't
+    # dominate the OLS slope within a single year.
+    trend_filters = {k: v for k, v in filters.items()
+                     if k not in ("start_quarter", "end_quarter")}
+    trend_scan_df = db.get_scan_data(trend_filters)
+    trend_df = calculate_velocity_trend(trend_scan_df, products_df, n_quarters=8)
 
     if indexed_df.empty or trend_df.empty:
         return pd.DataFrame(), pd.DataFrame(), {}

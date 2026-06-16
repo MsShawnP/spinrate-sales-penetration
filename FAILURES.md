@@ -2,6 +2,12 @@
 
 *What didn't work and why, so we don't repeat it.*
 
+### 2026-06-16 — Fading archetype decline too shallow, masked by seasonal bump
+- **What happened:** After adding the "fading" archetype (above-median velocity declining over time), the watchlist tier had 0 items. All 3 fading SKUs showed trend="flat" instead of "declining."
+- **Root cause:** The fading decline factor (1.15→0.70, 39% drop over 2 years) was too shallow. The Q4 seasonal multiplier in the synthetic data boosts raw values ~30-40% every year, creating a sawtooth pattern that the OLS regression sees as flat. The `_TREND_THRESHOLD = 0.05` (5% of mean) requires a strong enough slope to overcome seasonal noise.
+- **Fix:** Steepened fading decline to 1.3→0.4 (matching the at_risk archetype, 69% drop). The archetype velocity multiplier (2.2-3.0) still keeps fading SKUs above median, while the steeper decline registers as "declining" in the OLS regression.
+- **Lesson:** When designing synthetic data decline curves for OLS-based trend detection, the decline must be steep enough to overcome seasonal variation in the raw data. Test decline factors against the actual trend calculation before seeding — don't assume a "moderate" decline will register.
+
 ### 2026-06-16 — Plotly 6.0 binary-encodes numpy arrays, breaks Dash 3.x charts
 - **What happened:** Quadrant chart callback returned 200 with valid-looking data, but the chart rendered empty — zero data points visible.
 - **Root cause:** Plotly Python 6.0's `.to_plotly_json()` serializes numpy arrays as `{dtype: "f8", bdata: "base64..."}`. Plotly.js 3.6.0 (bundled with Dash 3.x) cannot decode this binary format — the browser receives Object instances with no `.length`, so traces render with 0 points.
