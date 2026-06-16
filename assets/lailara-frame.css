@@ -220,7 +220,7 @@
 
 .lailara-wordmark {
   font-family: var(--ll-serif);
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 700;
   color: var(--ll-london-5);
   text-decoration: none;
@@ -240,7 +240,7 @@
 
 .lailara-tool-name {
   font-family: var(--ll-sans);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 400;
   color: var(--ll-london-35);
   letter-spacing: 0.04em;
@@ -313,6 +313,14 @@
   .lailara-container {
     padding: 32px 16px;
     overflow-x: hidden;
+  }
+
+  .lailara-wordmark {
+    font-size: 20px;
+  }
+
+  .lailara-tool-name {
+    font-size: 12px;
   }
 
   /* Plotly chart containers */

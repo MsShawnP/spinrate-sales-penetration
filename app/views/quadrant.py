@@ -8,11 +8,14 @@ category-relative performance.
 """
 
 import json
+import logging
 
 import numpy as np
 import pandas as pd
 from dash import Input, Output, State, callback, dcc, html, no_update
 import plotly.graph_objects as go
+
+logger = logging.getLogger(__name__)
 
 from app.app import app
 from app.calculations import (
@@ -20,6 +23,7 @@ from app.calculations import (
     calculate_indexed_sppd,
     calculate_sppd,
     calculate_velocity_trend,
+    classify_quadrant,
     days_in_quarter_range,
 )
 from app.charts import CHART_CONFIG, economist_layout
@@ -62,7 +66,7 @@ def _scale_bubble_sizes(dollars_series):
     Uses square-root scaling so area is proportional to value, then
     normalizes to the min/max pixel range.
     """
-    if dollars_series.empty or dollars_series.max() == 0:
+    if dollars_series.empty:
         return pd.Series(dtype=float)
 
     sqrt_vals = np.sqrt(dollars_series.clip(lower=0))
@@ -90,17 +94,6 @@ def _assign_product_line_colors(product_lines):
         color_map[pl] = palette[i % len(palette)]
     return color_map
 
-
-def _classify_quadrant(sppd, acv_pct, median_sppd, median_acv):
-    """Assign quadrant label based on position relative to medians."""
-    if sppd >= median_sppd and acv_pct >= median_acv:
-        return QUADRANT_LABELS["star"]
-    elif sppd >= median_sppd and acv_pct < median_acv:
-        return QUADRANT_LABELS["hidden_gem"]
-    elif sppd < median_sppd and acv_pct >= median_acv:
-        return QUADRANT_LABELS["wide_but_dead"]
-    else:
-        return QUADRANT_LABELS["question_mark"]
 
 
 def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False):
@@ -435,6 +428,7 @@ def register_callbacks():
             benchmarks_df = db.get_benchmarks()
             products_df = db.get_products()
         except Exception:
+            logger.exception("Quadrant chart callback failed")
             return _build_empty_figure()
 
         if scan_df.empty or dist_df.empty:
@@ -492,7 +486,7 @@ def register_callbacks():
         # Quadrant classification.
         y_col_for_quadrant = "indexed_sppd" if indexed_mode else "sppd"
         chart_df["quadrant"] = chart_df.apply(
-            lambda row: _classify_quadrant(
+            lambda row: classify_quadrant(
                 row[y_col_for_quadrant], row["acv_pct"], median_sppd, median_acv
             ),
             axis=1,
@@ -529,6 +523,7 @@ def register_callbacks():
             benchmarks_df = db.get_benchmarks()
             products_df = db.get_products()
         except Exception:
+            logger.exception("Quadrant detail card callback failed")
             return html.P("Could not load detail data.", style={
                 "color": TEXT_SECONDARY, "fontFamily": FONT_SANS, "fontSize": "14px",
             })
@@ -571,7 +566,7 @@ def register_callbacks():
                 med_sppd = merged["sppd"].median()
 
             med_acv = merged["acv_pct"].median()
-            quadrant = _classify_quadrant(y_val, acv_val, med_sppd, med_acv)
+            quadrant = classify_quadrant(y_val, acv_val, med_sppd, med_acv)
         else:
             quadrant = "N/A"
 

@@ -7,11 +7,14 @@ of 10 stores filters out items too thinly distributed for credible ranking.
 """
 
 import json
+import logging
 
 import dash_ag_grid as dag
 import numpy as np
 import pandas as pd
 from dash import Input, Output, State, callback, dcc, html, no_update
+
+logger = logging.getLogger(__name__)
 
 from app.app import app
 from app.calculations import (
@@ -314,6 +317,7 @@ def register_callbacks():
         try:
             rows_df, summary = build_expansion_data(filters)
         except Exception:
+            logger.exception("Expansion view callback failed")
             return (
                 [],
                 _empty_message("Could not load expansion data."),

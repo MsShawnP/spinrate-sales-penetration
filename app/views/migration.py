@@ -6,14 +6,17 @@ QoQ with arrow overlay, zero user config required.
 """
 
 import json
+import logging
 
 import numpy as np
 import pandas as pd
 from dash import Input, Output, State, callback, dcc, html, no_update
 import plotly.graph_objects as go
 
+logger = logging.getLogger(__name__)
+
 from app.app import app
-from app.calculations import calculate_acv_pct, calculate_sppd, days_in_quarter_range
+from app.calculations import calculate_acv_pct, calculate_sppd, classify_quadrant, days_in_quarter_range
 from app.charts import CHART_CONFIG, economist_layout
 from app.components import dark_callout_card
 from app.constants import (
@@ -96,16 +99,6 @@ def _get_default_qoq_quarters(filter_state):
     return all_quarters[start_idx], all_quarters[end_idx]
 
 
-def _classify_quadrant(sppd, acv_pct, median_sppd, median_acv):
-    """Assign quadrant label based on position relative to medians."""
-    if sppd >= median_sppd and acv_pct >= median_acv:
-        return QUADRANT_LABELS["star"]
-    elif sppd >= median_sppd and acv_pct < median_acv:
-        return QUADRANT_LABELS["hidden_gem"]
-    elif sppd < median_sppd and acv_pct >= median_acv:
-        return QUADRANT_LABELS["wide_but_dead"]
-    else:
-        return QUADRANT_LABELS["question_mark"]
 
 
 def _compute_period_metrics(scan_df, dist_df, stores_df, products_df, quarter):
@@ -146,7 +139,7 @@ def _compute_period_metrics(scan_df, dist_df, stores_df, products_df, quarter):
     median_acv = merged["acv_pct"].median()
 
     merged["quadrant"] = merged.apply(
-        lambda row: _classify_quadrant(row["sppd"], row["acv_pct"], median_sppd, median_acv),
+        lambda row: classify_quadrant(row["sppd"], row["acv_pct"], median_sppd, median_acv),
         axis=1,
     )
     merged["product_name"] = merged["product_name"].fillna(merged["sku"])
@@ -996,6 +989,7 @@ def register_callbacks():
             stores_df = db.get_stores()
             products_df = db.get_products()
         except Exception:
+            logger.exception("Migration chart callback failed")
             return _build_no_migration_figure(), []
 
         p1_metrics = _compute_period_metrics(p1_scan, p1_dist, stores_df, products_df, q1_label)
@@ -1057,6 +1051,7 @@ def register_callbacks():
             stores_df = db.get_stores()
             products_df = db.get_products()
         except Exception:
+            logger.exception("Migration detail card callback failed")
             return html.P("Could not load detail data.", style={
                 "color": TEXT_SECONDARY, "fontFamily": FONT_SANS, "fontSize": "14px",
             })

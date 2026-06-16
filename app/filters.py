@@ -5,7 +5,9 @@ import json
 from dash import Input, Output, State, callback, dcc, html, no_update
 
 QUARTER_OPTIONS = [
-    {"label": f"Q{q} {y}", "value": f"Q{q} {y}"} for y in [2024, 2025] for q in [1, 2, 3, 4]
+    {"label": f"Q{q} {y}", "value": f"Q{q} {y}"}
+    for y in range(2024, 2027)
+    for q in [1, 2, 3, 4]
 ]
 
 DEFAULT_START_QUARTER = "Q1 2025"

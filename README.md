@@ -21,7 +21,10 @@ Four quadrants:
 
 ## Stack
 
-*TBD — stack will be determined during planning*
+- **Application:** Dash 3.x, Plotly 6.0, Python 3.11
+- **Data:** pandas 2.x, numpy, psycopg2 (Cinderhaven SSOT Postgres)
+- **UI:** dash-ag-grid (tabular views), clientside JS callbacks (click-to-pin)
+- **Deploy:** Gunicorn, Docker, Fly.io (shared-cpu-1x, iad region)
 
 ## Data contract
 

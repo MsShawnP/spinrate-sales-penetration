@@ -8,7 +8,20 @@ Follows doormath's pattern: DataFrame in, scalar/DataFrame out.
 import numpy as np
 import pandas as pd
 
-from app.constants import SPPD_FORMULA  # noqa: F401 — re-exported for convenience
+from app.constants import QUADRANT_LABELS
+
+
+def classify_quadrant(sppd, acv_pct, median_sppd, median_acv):
+    """Assign quadrant label based on position relative to medians."""
+    if sppd >= median_sppd and acv_pct >= median_acv:
+        return QUADRANT_LABELS["star"]
+    elif sppd >= median_sppd and acv_pct < median_acv:
+        return QUADRANT_LABELS["hidden_gem"]
+    elif sppd < median_sppd and acv_pct >= median_acv:
+        return QUADRANT_LABELS["wide_but_dead"]
+    else:
+        return QUADRANT_LABELS["question_mark"]
+
 
 # Volume tier weights used for ACV% calculation.
 VOLUME_TIER_WEIGHTS = {"A": 3, "B": 2, "C": 1}
@@ -276,10 +289,10 @@ def calculate_at_risk_score(indexed_sppd_df, trend_df):
     ]
     choices = ["act_now", "fix_or_rationalize", "watchlist"]
 
-    merged["at_risk_tier"] = np.select(conditions, choices, default=None)
+    merged["at_risk_tier"] = np.select(conditions, choices, default="")
 
     # Only return rows with a tier assignment.
-    result = merged[merged["at_risk_tier"].notna()].copy()
+    result = merged[merged["at_risk_tier"] != ""].copy()
     return result[["sku", "indexed_sppd", "trend", "at_risk_tier"]]
 
 
@@ -371,13 +384,15 @@ def days_in_quarter_range(start_quarter, end_quarter):
 
     Each quarter is 91 days (13 weeks).  Returns total days for the
     inclusive range from start_quarter through end_quarter.
+    Parses quarter strings directly — no hardcoded year list.
     """
-    all_quarters = [f"Q{q} {y}" for y in [2024, 2025] for q in [1, 2, 3, 4]]
     try:
-        start_idx = all_quarters.index(start_quarter)
-        end_idx = all_quarters.index(end_quarter)
-    except ValueError:
-        return 91  # Fallback to single quarter.
+        sq, sy = start_quarter.split()
+        eq, ey = end_quarter.split()
+        start_idx = int(sy) * 4 + int(sq[1])
+        end_idx = int(ey) * 4 + int(eq[1])
+    except (ValueError, IndexError):
+        return 91
 
     n_quarters = max(end_idx - start_idx + 1, 1)
     return n_quarters * 91

@@ -1,10 +1,13 @@
 """Layout assembly — brand frame, tab navigation, filter bar, and content area."""
 
 import json
+import logging
 
 import numpy as np
 import pandas as pd
 from dash import Input, Output, callback, dcc, html
+
+logger = logging.getLogger(__name__)
 
 from app import lailara_frame
 from app.app import app
@@ -67,7 +70,7 @@ def _build_narrative_section():
 # ── Protagonist discovery ────────────────────────────────────────
 
 
-def _find_protagonists(scan_df, dist_df, stores_df, products_df):
+def _find_protagonists(scan_df, dist_df, stores_df, products_df, filters=None):
     """Find the best exemplar SKU for each quadrant archetype.
 
     Returns a dict with keys: star, hidden_gem, wide_but_dead,
@@ -78,7 +81,10 @@ def _find_protagonists(scan_df, dist_df, stores_df, products_df):
     if scan_df.empty or dist_df.empty or stores_df.empty:
         return {}
 
-    days = days_in_quarter_range("Q1 2025", "Q1 2025")
+    filters = filters or {}
+    start_q = filters.get("start_quarter", "Q1 2025")
+    end_q = filters.get("end_quarter", "Q4 2025")
+    days = days_in_quarter_range(start_q, end_q)
     sppd_df = calculate_sppd(scan_df, days)
     acv_df = calculate_acv_pct(dist_df, stores_df)
 
@@ -333,9 +339,10 @@ def register_layout():
             stores_df = db.get_stores()
             products_df = db.get_products()
 
-            protagonists = _find_protagonists(scan_df, dist_df, stores_df, products_df)
+            protagonists = _find_protagonists(scan_df, dist_df, stores_df, products_df, filters)
             return _render_narrative(protagonists)
         except Exception:
+            logger.exception("Narrative callback failed")
             return _fallback_narrative()
 
     @callback(

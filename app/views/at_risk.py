@@ -7,10 +7,13 @@ user gets three distinct reads.  Watchlist tier rendered separately.
 """
 
 import json
+import logging
 
 import dash_ag_grid as dag
 import pandas as pd
 from dash import Input, Output, callback, dcc, html, no_update
+
+logger = logging.getLogger(__name__)
 
 from app.app import app
 from app.calculations import (
@@ -382,6 +385,7 @@ def register_callbacks():
         try:
             at_risk_df, watchlist_df, summary = build_at_risk_data(filters)
         except Exception:
+            logger.exception("At-risk view callback failed")
             return (
                 [],
                 [],

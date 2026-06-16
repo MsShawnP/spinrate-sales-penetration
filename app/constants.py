@@ -1,5 +1,7 @@
 """Lailara design-system tokens and format helpers for Plotly/Dash charts."""
 
+import math
+
 # ── Canvas & London greyscale ──
 WHITE = "#ffffff"
 CANVAS = "#f5f3ee"
@@ -90,24 +92,36 @@ SPPD_FORMULA = "SPPD = Total Units ÷ Carrying Stores ÷ Days in Period"
 
 
 # ── Format helpers ──
+def _is_missing(value):
+    return value is None or (isinstance(value, float) and math.isnan(value))
+
+
 def fmt_pct(value, decimals=1):
     """Format a decimal as percentage string."""
+    if _is_missing(value):
+        return "N/A"
     return f"{value * 100:.{decimals}f}%"
 
 
 def fmt_delta(value, decimals=1):
     """Format a percentage point delta with direction arrow."""
+    if _is_missing(value):
+        return "N/A"
     arrow = "↑" if value > 0 else "↓" if value < 0 else "→"
     return f"{arrow} {abs(value * 100):.{decimals}f} pp"
 
 
 def fmt_number(value):
     """Format large numbers with commas."""
+    if _is_missing(value):
+        return "N/A"
     return f"{value:,.0f}"
 
 
 def fmt_dollars(value):
     """Format dollar amounts with K/M suffixes."""
+    if _is_missing(value):
+        return "N/A"
     if abs(value) >= 1_000_000:
         return f"${value / 1_000_000:,.1f}M"
     if abs(value) >= 1_000:

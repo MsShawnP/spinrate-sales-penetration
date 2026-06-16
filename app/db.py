@@ -8,6 +8,7 @@ combination; callers receive .copy() to prevent mutation of cache.
 import hashlib
 import logging
 import os
+import threading
 
 import pandas as pd
 import psycopg2
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 # ── Connection pool ─────────────────────────────────────────────────
 _pool = None
+_pool_lock = threading.Lock()
 
 # Query timeout in milliseconds (30 seconds).
 _QUERY_TIMEOUT_MS = 30_000
@@ -32,24 +34,28 @@ def _get_pool():
     if _pool is not None:
         return _pool
 
-    database_url = os.environ.get("DATABASE_URL")
-    if not database_url:
-        raise RuntimeError(
-            "DATABASE_URL environment variable is not set. "
-            "Set it to a postgresql:// connection string pointing at the Cinderhaven SSOT."
-        )
+    with _pool_lock:
+        if _pool is not None:
+            return _pool
 
-    try:
-        _pool = pool.ThreadedConnectionPool(
-            minconn=1,
-            maxconn=5,
-            dsn=database_url,
-            options=f"-c statement_timeout={_QUERY_TIMEOUT_MS}",
-        )
-    except psycopg2.OperationalError as exc:
-        raise RuntimeError(
-            f"Could not connect to Cinderhaven SSOT database: {exc}"
-        ) from exc
+        database_url = os.environ.get("DATABASE_URL")
+        if not database_url:
+            raise RuntimeError(
+                "DATABASE_URL environment variable is not set. "
+                "Set it to a postgresql:// connection string pointing at the Cinderhaven SSOT."
+            )
+
+        try:
+            _pool = pool.ThreadedConnectionPool(
+                minconn=1,
+                maxconn=5,
+                dsn=database_url,
+                options=f"-c statement_timeout={_QUERY_TIMEOUT_MS}",
+            )
+        except psycopg2.OperationalError as exc:
+            raise RuntimeError(
+                f"Could not connect to Cinderhaven SSOT database: {exc}"
+            ) from exc
 
     return _pool
 
@@ -61,7 +67,11 @@ def _execute_query(sql, params=None):
     into a graceful empty DataFrame with a logged warning.
     """
     p = _get_pool()
-    conn = p.getconn()
+    try:
+        conn = p.getconn(timeout=5)
+    except pool.PoolError:
+        logger.error("Connection pool exhausted — returning empty DataFrame")
+        return pd.DataFrame()
     try:
         with conn.cursor() as cur:
             cur.execute(sql, params or ())
@@ -73,21 +83,32 @@ def _execute_query(sql, params=None):
         conn.rollback()
         logger.warning("Query timed out after %d ms — returning empty DataFrame", _QUERY_TIMEOUT_MS)
         return pd.DataFrame()
+    except (psycopg2.OperationalError, psycopg2.InterfaceError) as exc:
+        logger.error("Database connection failed: %s", exc)
+        p.putconn(conn, close=True)
+        conn = None
+        return pd.DataFrame()
     except psycopg2.Error as exc:
         conn.rollback()
         logger.error("Database query failed: %s", exc)
         return pd.DataFrame()
     finally:
-        p.putconn(conn)
+        if conn is not None:
+            p.putconn(conn)
 
 
 # ── Result cache ────────────────────────────────────────────────────
 _cache = {}
+_CACHE_MAX_ENTRIES = 128
 
 
 def _cache_key(prefix, filters):
     """Build a deterministic cache key from a prefix and filter dict."""
-    raw = f"{prefix}|{sorted(filters.items()) if filters else ''}"
+    normalized = {}
+    if filters:
+        for k, v in filters.items():
+            normalized[k] = sorted(v) if isinstance(v, list) else v
+    raw = f"{prefix}|{sorted(normalized.items()) if normalized else ''}"
     return hashlib.md5(raw.encode()).hexdigest()
 
 
@@ -95,7 +116,13 @@ def _cached(prefix, filters, loader):
     """Return a cached DataFrame copy, populating on first call."""
     key = _cache_key(prefix, filters)
     if key not in _cache:
-        _cache[key] = loader()
+        result = loader()
+        if not result.empty:
+            if len(_cache) >= _CACHE_MAX_ENTRIES:
+                oldest = next(iter(_cache))
+                del _cache[oldest]
+            _cache[key] = result
+        return result.copy()
     return _cache[key].copy()
 
 
@@ -291,10 +318,8 @@ def _quarter_end_date(quarter_str):
     q, year = quarter_str.split()
     q_num = int(q[1])
     end_month = q_num * 3
-    if end_month in (1, 3, 5, 7, 8, 10, 12):
+    if end_month in (3, 12):
         end_day = 31
-    elif end_month in (4, 6, 9, 11):
-        end_day = 30
     else:
-        end_day = 28  # Feb -- no leap year concern for 2024-2025 data
+        end_day = 30
     return f"{year}-{end_month:02d}-{end_day:02d}"

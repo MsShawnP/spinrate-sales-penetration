@@ -175,11 +175,11 @@ class TestBuildAtRiskData:
 
             at_risk_df, watchlist_df, summary = build_at_risk_data(default_filters)
 
-        if not at_risk_df.empty:
-            risk_skus = at_risk_df[at_risk_df["at_risk_tier"] == "act_now"]
-            if "RISK-001" in risk_skus["sku"].values:
-                row = risk_skus[risk_skus["sku"] == "RISK-001"].iloc[0]
-                assert row["signal"] == "Level + Trend"
+        assert not at_risk_df.empty, "at_risk_df should not be empty"
+        risk_skus = at_risk_df[at_risk_df["at_risk_tier"] == "act_now"]
+        assert "RISK-001" in risk_skus["sku"].values, "RISK-001 should be in act_now tier"
+        row = risk_skus[risk_skus["sku"] == "RISK-001"].iloc[0]
+        assert row["signal"] == "Level + Trend"
 
     def test_flat_below_median_is_fix_or_rationalize(
         self, flat_risk_scan_df, sample_stores_df, sample_benchmarks_df, multi_product_df, default_filters
@@ -193,11 +193,11 @@ class TestBuildAtRiskData:
 
             at_risk_df, watchlist_df, summary = build_at_risk_data(default_filters)
 
-        if not at_risk_df.empty:
-            fix_skus = at_risk_df[at_risk_df["at_risk_tier"] == "fix_or_rationalize"]
-            if "FLAT-001" in fix_skus["sku"].values:
-                row = fix_skus[fix_skus["sku"] == "FLAT-001"].iloc[0]
-                assert row["signal"] == "Level"
+        assert not at_risk_df.empty, "at_risk_df should not be empty"
+        fix_skus = at_risk_df[at_risk_df["at_risk_tier"] == "fix_or_rationalize"]
+        assert "FLAT-001" in fix_skus["sku"].values, "FLAT-001 should be in fix_or_rationalize tier"
+        row = fix_skus[fix_skus["sku"] == "FLAT-001"].iloc[0]
+        assert row["signal"] == "Level"
 
     def test_declining_above_median_is_watchlist(
         self, watchlist_scan_df, sample_stores_df, sample_benchmarks_df, multi_product_df, default_filters
@@ -211,10 +211,10 @@ class TestBuildAtRiskData:
 
             at_risk_df, watchlist_df, summary = build_at_risk_data(default_filters)
 
-        if not watchlist_df.empty:
-            assert "WATCH-001" in watchlist_df["sku"].values
-            row = watchlist_df[watchlist_df["sku"] == "WATCH-001"].iloc[0]
-            assert row["signal"] == "Trend"
+        assert not watchlist_df.empty, "watchlist_df should not be empty"
+        assert "WATCH-001" in watchlist_df["sku"].values, "WATCH-001 should be in watchlist"
+        row = watchlist_df[watchlist_df["sku"] == "WATCH-001"].iloc[0]
+        assert row["signal"] == "Trend"
 
     def test_healthy_sku_excluded(
         self, at_risk_scan_df, sample_stores_df, sample_benchmarks_df, multi_product_df, default_filters

@@ -14,6 +14,7 @@ def wrap(layout, tool_name: str, footer_note: str = None, no_container: bool = F
                     target="_blank",
                     rel="noopener",
                 ),
+                " — data hygiene and analytics consulting for specialty food brands scaling into national retail.",
             ]
         ),
     ]

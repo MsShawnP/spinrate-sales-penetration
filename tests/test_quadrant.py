@@ -8,12 +8,11 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
-from app.calculations import calculate_acv_pct, calculate_sppd
+from app.calculations import calculate_acv_pct, calculate_sppd, classify_quadrant
 from app.views.quadrant import (
     LOW_DOOR_THRESHOLD,
     _build_empty_figure,
     _build_quadrant_figure,
-    _classify_quadrant,
     _scale_bubble_sizes,
     layout,
 )
@@ -46,9 +45,9 @@ class TestScaleBubbleSizes:
         assert sizes.empty
 
     def test_zero_max(self):
-        """All zeros returns empty."""
+        """All zeros returns uniform midpoint bubbles."""
         sizes = _scale_bubble_sizes(pd.Series([0, 0, 0]))
-        # When max is 0, still gets midpoint (all same after sqrt).
+        assert len(sizes) == 3
         expected_mid = 8 + (45 - 8) / 2
         assert all(abs(s - expected_mid) < 0.01 for s in sizes)
 
@@ -67,27 +66,27 @@ class TestClassifyQuadrant:
 
     def test_star_top_right(self):
         """High SPPD + high ACV% = Stars."""
-        result = _classify_quadrant(sppd=2.0, acv_pct=0.8, median_sppd=1.0, median_acv=0.5)
+        result = classify_quadrant(sppd=2.0, acv_pct=0.8, median_sppd=1.0, median_acv=0.5)
         assert result == QUADRANT_LABELS["star"]
 
     def test_hidden_gem_top_left(self):
         """High SPPD + low ACV% = Hidden Gems."""
-        result = _classify_quadrant(sppd=2.0, acv_pct=0.2, median_sppd=1.0, median_acv=0.5)
+        result = classify_quadrant(sppd=2.0, acv_pct=0.2, median_sppd=1.0, median_acv=0.5)
         assert result == QUADRANT_LABELS["hidden_gem"]
 
     def test_wide_but_dead_bottom_right(self):
         """Low SPPD + high ACV% = Wide but Dead."""
-        result = _classify_quadrant(sppd=0.3, acv_pct=0.8, median_sppd=1.0, median_acv=0.5)
+        result = classify_quadrant(sppd=0.3, acv_pct=0.8, median_sppd=1.0, median_acv=0.5)
         assert result == QUADRANT_LABELS["wide_but_dead"]
 
     def test_question_mark_bottom_left(self):
         """Low SPPD + low ACV% = Question Marks."""
-        result = _classify_quadrant(sppd=0.3, acv_pct=0.2, median_sppd=1.0, median_acv=0.5)
+        result = classify_quadrant(sppd=0.3, acv_pct=0.2, median_sppd=1.0, median_acv=0.5)
         assert result == QUADRANT_LABELS["question_mark"]
 
     def test_on_median_is_star(self):
         """Exactly at both medians counts as Stars (>= comparison)."""
-        result = _classify_quadrant(sppd=1.0, acv_pct=0.5, median_sppd=1.0, median_acv=0.5)
+        result = classify_quadrant(sppd=1.0, acv_pct=0.5, median_sppd=1.0, median_acv=0.5)
         assert result == QUADRANT_LABELS["star"]
 
 
@@ -119,7 +118,7 @@ class TestBuildQuadrantFigure:
         median_sppd = chart_df["sppd"].median()
         median_acv = chart_df["acv_pct"].median()
         chart_df["quadrant"] = chart_df.apply(
-            lambda row: _classify_quadrant(row["sppd"], row["acv_pct"], median_sppd, median_acv),
+            lambda row: classify_quadrant(row["sppd"], row["acv_pct"], median_sppd, median_acv),
             axis=1,
         )
         chart_df["product_name"] = chart_df["product_name"].fillna(chart_df["sku"])
@@ -411,7 +410,7 @@ class TestFilterIntegration:
         median_sppd = chart_df["sppd"].median()
         median_acv = chart_df["acv_pct"].median()
         chart_df["quadrant"] = chart_df.apply(
-            lambda row: _classify_quadrant(row["sppd"], row["acv_pct"], median_sppd, median_acv),
+            lambda row: classify_quadrant(row["sppd"], row["acv_pct"], median_sppd, median_acv),
             axis=1,
         )
         chart_df["product_name"] = chart_df["product_name"].fillna(chart_df["sku"])
@@ -464,7 +463,7 @@ class TestIndexedSPPDToggle:
         median_acv = chart_df["acv_pct"].median()
 
         chart_df["quadrant"] = chart_df.apply(
-            lambda row: _classify_quadrant(row["indexed_sppd"], row["acv_pct"], median_sppd, median_acv),
+            lambda row: classify_quadrant(row["indexed_sppd"], row["acv_pct"], median_sppd, median_acv),
             axis=1,
         )
         chart_df["product_name"] = chart_df["product_name"].fillna(chart_df["sku"])

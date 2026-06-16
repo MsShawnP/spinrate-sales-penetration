@@ -8,7 +8,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
-from app.calculations import calculate_acv_pct, calculate_sppd, days_in_quarter_range
+from app.calculations import calculate_acv_pct, calculate_sppd, classify_quadrant, days_in_quarter_range
 from app.constants import (
     MIGRATION_FAVORABLE,
     MIGRATION_UNFAVORABLE,
@@ -20,7 +20,6 @@ from app.views.migration import (
     _SANKEY_ORDER,
     _build_migration_df,
     _build_no_migration_figure,
-    _classify_quadrant,
     _compute_period_metrics,
     _get_default_qoq_quarters,
     build_arrow_overlay,
@@ -133,16 +132,16 @@ class TestMigrationClassifyQuadrant:
     """Quadrant classification in migration module matches quadrant view."""
 
     def test_star(self):
-        assert _classify_quadrant(2.0, 0.8, 1.0, 0.5) == QUADRANT_LABELS["star"]
+        assert classify_quadrant(2.0, 0.8, 1.0, 0.5) == QUADRANT_LABELS["star"]
 
     def test_hidden_gem(self):
-        assert _classify_quadrant(2.0, 0.2, 1.0, 0.5) == QUADRANT_LABELS["hidden_gem"]
+        assert classify_quadrant(2.0, 0.2, 1.0, 0.5) == QUADRANT_LABELS["hidden_gem"]
 
     def test_wide_but_dead(self):
-        assert _classify_quadrant(0.3, 0.8, 1.0, 0.5) == QUADRANT_LABELS["wide_but_dead"]
+        assert classify_quadrant(0.3, 0.8, 1.0, 0.5) == QUADRANT_LABELS["wide_but_dead"]
 
     def test_question_mark(self):
-        assert _classify_quadrant(0.3, 0.2, 1.0, 0.5) == QUADRANT_LABELS["question_mark"]
+        assert classify_quadrant(0.3, 0.2, 1.0, 0.5) == QUADRANT_LABELS["question_mark"]
 
 
 # ── Default QoQ ──────────────────────────────────────────────────────
