@@ -306,7 +306,7 @@ class TestArrowOverlay:
 
         # Stayer trace should exist.
         trace_names = [t.name for t in fig.data if t.name]
-        has_no_change = any("no change" in name for name in trace_names)
+        has_no_change = any("no change" in name.lower() for name in trace_names)
         assert has_no_change, f"No 'no change' trace found. Traces: {trace_names}"
 
     def test_default_loads_arrows(self, two_period_metrics):

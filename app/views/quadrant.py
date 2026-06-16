@@ -35,6 +35,7 @@ from app.constants import (
     FONT_SANS,
     FONT_SERIF,
     GRIDLINE,
+    INFO_BG,
     INK,
     QUADRANT_LABELS,
     REFERENCE,
@@ -130,8 +131,8 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
 
         if not normal.empty:
             fig.add_trace(go.Scatter(
-                x=normal["acv_pct"],
-                y=normal[y_col],
+                x=normal["acv_pct"].tolist(),
+                y=normal[y_col].tolist(),
                 mode="markers",
                 name=pl,
                 customdata=np.stack([
@@ -142,11 +143,11 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
                     normal["door_count"],
                     normal["sppd"],
                     normal["quadrant"],
-                ], axis=-1),
+                ], axis=-1).tolist(),
                 marker=dict(
-                    size=normal["bubble_size"],
+                    size=normal["bubble_size"].tolist(),
                     color=color,
-                    opacity=normal["opacity"],
+                    opacity=normal["opacity"].tolist(),
                     line=dict(width=1, color=INK),
                 ),
                 hoverinfo="skip",
@@ -155,8 +156,8 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
 
         if not low_door.empty:
             fig.add_trace(go.Scatter(
-                x=low_door["acv_pct"],
-                y=low_door[y_col],
+                x=low_door["acv_pct"].tolist(),
+                y=low_door[y_col].tolist(),
                 mode="markers",
                 name=f"{pl} (low doors)",
                 customdata=np.stack([
@@ -167,9 +168,9 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
                     low_door["door_count"],
                     low_door["sppd"],
                     low_door["quadrant"],
-                ], axis=-1),
+                ], axis=-1).tolist(),
                 marker=dict(
-                    size=low_door["bubble_size"],
+                    size=low_door["bubble_size"].tolist(),
                     color=color,
                     opacity=0.4,
                     line=dict(width=2, color=color, dash="dash"),
@@ -306,7 +307,7 @@ def layout():
                         n_clicks=0,
                         className="indexed-toggle-btn",
                         style={
-                            "backgroundColor": WHITE,
+                            "backgroundColor": INFO_BG,
                             "color": CHICAGO_20,
                             "border": f"2px solid {CHICAGO_20}",
                             "padding": "8px 20px",
@@ -387,7 +388,7 @@ def register_callbacks():
                 "cursor": "pointer",
             }
         return "Show Indexed SPPD", {
-            "backgroundColor": WHITE,
+            "backgroundColor": INFO_BG,
             "color": CHICAGO_20,
             "border": f"2px solid {CHICAGO_20}",
             "padding": "8px 20px",

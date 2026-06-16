@@ -263,10 +263,10 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
 
     # Ghost dots: Period 1 positions (all SKUs).
     fig.add_trace(go.Scatter(
-        x=migration_df["acv_pct_p1"],
-        y=migration_df["sppd_p1"],
+        x=migration_df["acv_pct_p1"].tolist(),
+        y=migration_df["sppd_p1"].tolist(),
         mode="markers",
-        name=q1_label,
+        name=f"{q1_label} (prior)",
         customdata=np.stack([
             migration_df["sku"],
             migration_df["product_name_p1"],
@@ -274,7 +274,7 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
             migration_df["sppd_p1"],
             migration_df["acv_pct_p1"],
             migration_df["total_dollars_p1"],
-        ], axis=-1) if not migration_df.empty else None,
+        ], axis=-1).tolist() if not migration_df.empty else None,
         marker=dict(
             size=10,
             color=DISABLED,
@@ -288,10 +288,10 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
     # Solid dots: Period 2 positions for stayers.
     if not stayers.empty:
         fig.add_trace(go.Scatter(
-            x=stayers["acv_pct_p2"],
-            y=stayers["sppd_p2"],
+            x=stayers["acv_pct_p2"].tolist(),
+            y=stayers["sppd_p2"].tolist(),
             mode="markers",
-            name=f"{q2_label} (no change)",
+            name="No change",
             customdata=np.stack([
                 stayers["sku"],
                 stayers["product_name_p2"],
@@ -299,7 +299,7 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
                 stayers["sppd_p2"],
                 stayers["acv_pct_p2"],
                 stayers["total_dollars_p2"],
-            ], axis=-1),
+            ], axis=-1).tolist(),
             marker=dict(
                 size=10,
                 color=REFERENCE,
@@ -314,10 +314,10 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
     favorable = top_movers[top_movers["rank_delta"] > 0]
     if not favorable.empty:
         fig.add_trace(go.Scatter(
-            x=favorable["acv_pct_p2"],
-            y=favorable["sppd_p2"],
+            x=favorable["acv_pct_p2"].tolist(),
+            y=favorable["sppd_p2"].tolist(),
             mode="markers",
-            name=f"Favorable ({q2_label})",
+            name="Favorable",
             customdata=np.stack([
                 favorable["sku"],
                 favorable["product_name_p2"],
@@ -325,7 +325,7 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
                 favorable["sppd_p2"],
                 favorable["acv_pct_p2"],
                 favorable["total_dollars_p2"],
-            ], axis=-1),
+            ], axis=-1).tolist(),
             marker=dict(
                 size=12,
                 color=MIGRATION_FAVORABLE,
@@ -340,10 +340,10 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
     unfavorable = top_movers[top_movers["rank_delta"] < 0]
     if not unfavorable.empty:
         fig.add_trace(go.Scatter(
-            x=unfavorable["acv_pct_p2"],
-            y=unfavorable["sppd_p2"],
+            x=unfavorable["acv_pct_p2"].tolist(),
+            y=unfavorable["sppd_p2"].tolist(),
             mode="markers",
-            name=f"Unfavorable ({q2_label})",
+            name="Unfavorable",
             customdata=np.stack([
                 unfavorable["sku"],
                 unfavorable["product_name_p2"],
@@ -351,7 +351,7 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
                 unfavorable["sppd_p2"],
                 unfavorable["acv_pct_p2"],
                 unfavorable["total_dollars_p2"],
-            ], axis=-1),
+            ], axis=-1).tolist(),
             marker=dict(
                 size=12,
                 color=MIGRATION_UNFAVORABLE,
@@ -366,10 +366,10 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
     lateral = top_movers[top_movers["rank_delta"] == 0]
     if not lateral.empty:
         fig.add_trace(go.Scatter(
-            x=lateral["acv_pct_p2"],
-            y=lateral["sppd_p2"],
+            x=lateral["acv_pct_p2"].tolist(),
+            y=lateral["sppd_p2"].tolist(),
             mode="markers",
-            name=f"Lateral ({q2_label})",
+            name="Lateral",
             customdata=np.stack([
                 lateral["sku"],
                 lateral["product_name_p2"],
@@ -377,7 +377,7 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
                 lateral["sppd_p2"],
                 lateral["acv_pct_p2"],
                 lateral["total_dollars_p2"],
-            ], axis=-1),
+            ], axis=-1).tolist(),
             marker=dict(
                 size=12,
                 color=REFERENCE,
@@ -483,8 +483,8 @@ def build_side_by_side(migration_df, q1_label, q2_label):
     }).fillna(DISABLED)
 
     fig.add_trace(go.Scatter(
-        x=migration_df["acv_pct_p1"],
-        y=migration_df["sppd_p1"],
+        x=migration_df["acv_pct_p1"].tolist(),
+        y=migration_df["sppd_p1"].tolist(),
         mode="markers",
         name=q1_label,
         customdata=np.stack([
@@ -494,8 +494,8 @@ def build_side_by_side(migration_df, q1_label, q2_label):
             migration_df["sppd_p1"],
             migration_df["acv_pct_p1"],
             migration_df["total_dollars_p1"],
-        ], axis=-1),
-        marker=dict(size=10, color=colors_p1, opacity=0.8, line=dict(width=1, color=INK)),
+        ], axis=-1).tolist(),
+        marker=dict(size=10, color=colors_p1.tolist(), opacity=0.8, line=dict(width=1, color=INK)),
         hoverinfo="skip",
         showlegend=False,
     ), row=1, col=1)
@@ -512,8 +512,8 @@ def build_side_by_side(migration_df, q1_label, q2_label):
     }).fillna(DISABLED)
 
     fig.add_trace(go.Scatter(
-        x=migration_df["acv_pct_p2"],
-        y=migration_df["sppd_p2"],
+        x=migration_df["acv_pct_p2"].tolist(),
+        y=migration_df["sppd_p2"].tolist(),
         mode="markers",
         name=q2_label,
         customdata=np.stack([
@@ -523,8 +523,8 @@ def build_side_by_side(migration_df, q1_label, q2_label):
             migration_df["sppd_p2"],
             migration_df["acv_pct_p2"],
             migration_df["total_dollars_p2"],
-        ], axis=-1),
-        marker=dict(size=10, color=colors_p2, opacity=0.8, line=dict(width=1, color=INK)),
+        ], axis=-1).tolist(),
+        marker=dict(size=10, color=colors_p2.tolist(), opacity=0.8, line=dict(width=1, color=INK)),
         hoverinfo="skip",
         showlegend=False,
     ), row=1, col=2)

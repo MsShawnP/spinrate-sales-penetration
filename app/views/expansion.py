@@ -220,7 +220,8 @@ _COLUMN_DEFS = [
     {
         "field": "upside_median_dollars",
         "headerName": "Upside @ Median",
-        "width": 140,
+        "headerTooltip": "Projected quarterly upside at peer-median door count",
+        "width": 155,
         "sort": "desc",
         "valueFormatter": {"function": "d3.format('$,.0f')(params.value)"},
         "cellStyle": {
@@ -230,13 +231,15 @@ _COLUMN_DEFS = [
     {
         "field": "upside_p75_dollars",
         "headerName": "Upside @ 75th",
-        "width": 130,
+        "headerTooltip": "Projected quarterly upside at 75th-percentile door count",
+        "width": 145,
         "valueFormatter": {"function": "d3.format('$,.0f')(params.value)"},
     },
     {
         "field": "upside_leader_dollars",
         "headerName": "Upside @ Leader",
-        "width": 140,
+        "headerTooltip": "Projected quarterly upside at category-leader door count",
+        "width": 155,
         "valueFormatter": {"function": "d3.format('$,.0f')(params.value)"},
     },
     {

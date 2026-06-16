@@ -1,5 +1,18 @@
 # Handoff — Spinrate Sales Penetration
 
+## 2026-06-16 (session 5)
+
+**Started from:** Context continuation — data variance fixed, quadrant `.tolist()` applied but unverified, migration/expansion/at-risk unchecked for Plotly 6.0 binary encoding, three UI issues queued.
+
+**Did:** Applied `.tolist()` to 7 Plotly traces in migration.py. Fixed migration legend truncation (shortened labels). Widened expansion column headers + added tooltips. Changed toggle button to INFO_BG fill. Verified all four views render with proper data variance. 138 tests passing.
+
+**State:** All views rendering correctly. Data variance confirmed (ACV 5%-62%, SPPD 0.29-7.01). All UI issues resolved. Ready for Fly.io deploy.
+
+**Next:**
+1. Deploy to Fly.io: `fly deploy`, `fly secrets set DATABASE_URL=<url>`, DNS CNAME `spinrate.lailarallc.com`, `fly certs create`
+2. Run `/ce:compound` — extract learnings
+3. Address remaining P2/P3 review findings in a follow-up session
+
 ## 2026-06-16 (session 4)
 
 **Started from:** All 8 units implemented, 138 tests passing. Needed code review, then deploy.

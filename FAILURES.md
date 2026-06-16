@@ -2,6 +2,12 @@
 
 *What didn't work and why, so we don't repeat it.*
 
+### 2026-06-16 — Plotly 6.0 binary-encodes numpy arrays, breaks Dash 3.x charts
+- **What happened:** Quadrant chart callback returned 200 with valid-looking data, but the chart rendered empty — zero data points visible.
+- **Root cause:** Plotly Python 6.0's `.to_plotly_json()` serializes numpy arrays as `{dtype: "f8", bdata: "base64..."}`. Plotly.js 3.6.0 (bundled with Dash 3.x) cannot decode this binary format — the browser receives Object instances with no `.length`, so traces render with 0 points.
+- **Fix:** Call `.tolist()` on every pandas Series or numpy array passed to Plotly trace constructors (`x=`, `y=`, `customdata=`, `marker.size=`, `marker.color=`). This forces JSON-array serialization that Plotly.js 3.6.0 can read.
+- **Lesson:** When using Plotly 6.0 with Dash 3.x, always convert pandas Series to Python lists before passing to `go.Scatter()`, `go.Bar()`, etc. The Decimal-to-float fix (below) handles type conversion at the data layer; this fix handles serialization format at the chart layer. Both are needed.
+
 ### 2026-06-16 — psycopg2 Decimal types break Plotly 6.0 marker arrays
 - **What happened:** Quadrant chart rendered blank — all four views showed empty/error states despite the narrative intro pulling real data. The `except Exception` in the callback silently caught the error and returned an empty figure.
 - **Root cause:** psycopg2 returns Postgres `numeric` columns as Python `Decimal` objects. `np.sqrt(Decimal)` produces a Decimal-backed Series (`dtype: object`). Plotly 6.0 rejects non-float arrays for `marker.size` with `ValueError: Input value is not numeric`. Plotly 5.x was lenient about this.

@@ -2,6 +2,11 @@
 
 *Durable choices with rationale. Updated as decisions are made.*
 
+### 2026-06-16 — Call .tolist() on all pandas Series passed to Plotly traces
+- **Why:** Plotly Python 6.0 binary-encodes numpy arrays as `{dtype, bdata}` which Plotly.js 3.6.0 (bundled with Dash 3.x) cannot decode, rendering charts empty. Converting to Python lists forces JSON-array serialization.
+- **Scope:** Every `go.Scatter()`, `go.Bar()`, or similar Plotly trace constructor in any Dash 3.x app using Plotly 6.0. Applies to x, y, customdata, marker.size, marker.color, and any other array property.
+- **Do not:** Pass raw pandas Series or numpy arrays directly to Plotly trace constructors. Always call `.tolist()` first.
+
 ### 2026-06-16 — Cast Decimal to float at the data layer, not in views
 - **Why:** psycopg2 returns Postgres `numeric` columns as Python `Decimal`. Plotly 6.0 rejects non-float arrays. Patching individual view functions would require N fixes across N views and miss future views. Casting in `_execute_query()` fixes it once for all consumers.
 - **Scope:** All Cinderhaven-backed Dash tools using psycopg2 + Plotly 6.0. Apply the same pattern to Doormath and future tools.
