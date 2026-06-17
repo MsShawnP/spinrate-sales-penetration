@@ -2,6 +2,12 @@
 
 *What didn't work and why, so we don't repeat it.*
 
+### 2026-06-17 — At-risk OOM invisible from outside; only visible in fly logs
+- **What happened:** At-risk tab returned zero rows in production. Health checks passed, app responded 200 on all other tabs. No user-visible error.
+- **Root cause:** The at-risk trend calculation loaded all ~1.2M raw scan rows (12 quarters × ~100K rows each) for OLS regression. On a 1024MB Fly.io VM with 2 gunicorn workers, this exceeded available memory. The OOM killed the worker, Firecracker restarted it, and health checks passed on the fresh process — so the failure was invisible unless you checked `fly logs` or specifically clicked the at-risk tab.
+- **Fix:** Pushed aggregation to SQL with `get_quarterly_sppd()` — returns ~600 rows instead of 1.2M. Same OLS logic, 2000x less memory.
+- **Lesson:** After deploying any view that touches large datasets, verify that specific view loads in production — don't rely on health checks or other tabs working. Also check `fly logs` for OOM patterns (`Process appears to have been OOM killed`). Consider adding per-view health checks or memory budgets.
+
 ### 2026-06-17 — Production data never synced after archetype variance fix
 - **What happened:** Production ACV was clustered 27.5%-34.5% despite local database having correct 5%-62% range. Expansion and At-Risk tabs failed to load meaningful data in production.
 - **Root cause:** The archetype-driven variance was added to seed_config.py and re-seeded locally, but the production Fly.io Postgres was never updated. Multiple sessions verified views against localhost but nobody synced to production.

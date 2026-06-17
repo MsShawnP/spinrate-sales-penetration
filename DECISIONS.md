@@ -2,6 +2,11 @@
 
 *Durable choices with rationale. Updated as decisions are made.*
 
+### 2026-06-17 — Push heavy aggregation to SQL for memory-constrained VMs
+- **Why:** The at-risk trend calculation loaded ~1.2M raw scan rows for OLS regression, causing OOM on a 1024MB Fly.io VM. Pushing GROUP BY to SQL returns ~600 rows — same analytical result, 2000x less memory. The OLS logic operates on quarterly SPPD either way.
+- **Scope:** Any Cinderhaven-backed view that needs multi-quarter trend analysis. Applies to at-risk and any future view that runs regressions over historical data.
+- **Do not:** Load raw scan rows for trend/regression calculations on constrained VMs. Always aggregate to the grain the analysis needs (quarterly SPPD, monthly totals, etc.) in SQL before pulling into Python.
+
 ### 2026-06-17 — Migration protagonist uses real quadrant movers, not a star copy
 - **Why:** The narrative's migration section was copying the star SKU's data and showing a generic "movement tells the story" paragraph. This gave no concrete example of quadrant migration. Querying two consecutive quarters and finding a SKU that actually changed quadrants makes the narrative data-driven end to end.
 - **Scope:** Narrative intro in layout.py. Falls back to star copy when only single-quarter data is available (e.g., in tests with minimal fixtures).

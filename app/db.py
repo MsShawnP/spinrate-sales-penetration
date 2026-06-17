@@ -301,6 +301,68 @@ def get_products():
     return _cached("products", {}, _load)
 
 
+def get_quarterly_sppd(filters=None):
+    """Compute quarterly SPPD per SKU aggregated in SQL.
+
+    Returns ~50×12 rows instead of ~1.2M raw scan rows. Used by the
+    at-risk trend calculation to avoid OOM on constrained VMs.
+
+    Columns returned: sku, quarter, total_units, door_count, sppd.
+    Quarter format: '2025Q3' (pandas period string).
+    """
+    filters = filters or {}
+
+    def _load():
+        clauses = []
+        params = []
+
+        retailers = filters.get("retailers")
+        region = filters.get("region")
+        needs_store_join = bool(retailers) or bool(region)
+
+        if needs_store_join:
+            base = (
+                "SELECT sd.sku, "
+                "EXTRACT(YEAR FROM sd.week_ending)::int AS yr, "
+                "EXTRACT(QUARTER FROM sd.week_ending)::int AS qtr, "
+                "SUM(sd.units_sold)::float AS total_units, "
+                "COUNT(DISTINCT sd.store_id)::float AS door_count "
+                "FROM fct_scan_data sd "
+                "INNER JOIN dim_stores ds ON sd.store_id = ds.store_id"
+            )
+            if retailers:
+                placeholders = ", ".join(["%s"] * len(retailers))
+                clauses.append(f"ds.retailer IN ({placeholders})")
+                params.extend(retailers)
+            if region:
+                clauses.append("ds.region = %s")
+                params.append(region)
+        else:
+            base = (
+                "SELECT sd.sku, "
+                "EXTRACT(YEAR FROM sd.week_ending)::int AS yr, "
+                "EXTRACT(QUARTER FROM sd.week_ending)::int AS qtr, "
+                "SUM(sd.units_sold)::float AS total_units, "
+                "COUNT(DISTINCT sd.store_id)::float AS door_count "
+                "FROM fct_scan_data sd"
+            )
+
+        sql = base
+        if clauses:
+            sql += " WHERE " + " AND ".join(clauses)
+        sql += " GROUP BY sd.sku, yr, qtr ORDER BY sd.sku, yr, qtr"
+
+        df = _execute_query(sql, params)
+        if df.empty:
+            return pd.DataFrame(columns=["sku", "quarter", "total_units", "door_count", "sppd"])
+
+        df["quarter"] = df["yr"].astype(int).astype(str) + "Q" + df["qtr"].astype(int).astype(str)
+        df["sppd"] = df["total_units"] / df["door_count"] / 91.0
+        return df[["sku", "quarter", "total_units", "door_count", "sppd"]]
+
+    return _cached("quarterly_sppd", filters, _load)
+
+
 # ── Quarter helpers ─────────────────────────────────────────────────
 
 def _quarter_start_date(quarter_str):

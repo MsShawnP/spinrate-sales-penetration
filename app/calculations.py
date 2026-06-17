@@ -252,6 +252,79 @@ def calculate_velocity_trend(scan_df, products_df, n_quarters=4):
     return pd.DataFrame(results)
 
 
+def calculate_velocity_trend_from_quarterly(quarterly_sppd_df, n_quarters=8):
+    """Classify velocity direction from pre-aggregated quarterly SPPD.
+
+    Same logic as calculate_velocity_trend but skips the raw scan
+    aggregation step — takes output from db.get_quarterly_sppd() instead
+    of raw scan data. This avoids loading millions of raw rows.
+
+    Parameters
+    ----------
+    quarterly_sppd_df : DataFrame
+        Must contain: sku, quarter, sppd.
+        Quarter format: '2025Q3' (sortable string).
+    n_quarters : int
+        Number of trailing quarters to evaluate (default 8).
+
+    Returns
+    -------
+    DataFrame with columns: sku, trend, slope, mean_sppd, quarters_with_data.
+    """
+    if quarterly_sppd_df.empty:
+        return pd.DataFrame(
+            columns=["sku", "trend", "slope", "mean_sppd", "quarters_with_data"]
+        )
+
+    all_quarters = sorted(quarterly_sppd_df["quarter"].unique())
+    recent_quarters = all_quarters[-n_quarters:] if len(all_quarters) > n_quarters else all_quarters
+
+    df = quarterly_sppd_df[quarterly_sppd_df["quarter"].isin(recent_quarters)].copy()
+
+    quarter_order = {q: i for i, q in enumerate(recent_quarters)}
+    df["q_idx"] = df["quarter"].map(quarter_order)
+
+    results = []
+    for sku, group in df.groupby("sku"):
+        if len(group) < 2:
+            results.append({
+                "sku": sku,
+                "trend": "flat",
+                "slope": 0.0,
+                "mean_sppd": float(group["sppd"].mean()),
+                "quarters_with_data": len(group),
+            })
+            continue
+
+        x = group["q_idx"].values.astype(float)
+        y = group["sppd"].values.astype(float)
+        mean_sppd = float(y.mean())
+
+        slope = float(np.polyfit(x, y, 1)[0])
+
+        if mean_sppd > 0:
+            relative_slope = slope / mean_sppd
+        else:
+            relative_slope = 0.0
+
+        if relative_slope > _TREND_THRESHOLD:
+            trend = "rising"
+        elif relative_slope < -_TREND_THRESHOLD:
+            trend = "declining"
+        else:
+            trend = "flat"
+
+        results.append({
+            "sku": sku,
+            "trend": trend,
+            "slope": slope,
+            "mean_sppd": mean_sppd,
+            "quarters_with_data": len(group),
+        })
+
+    return pd.DataFrame(results)
+
+
 # ── At-risk scoring ─────────────────────────────────────────────────
 
 def calculate_at_risk_score(indexed_sppd_df, trend_df):

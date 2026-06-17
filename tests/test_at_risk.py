@@ -12,6 +12,21 @@ from app.views.at_risk import (
 )
 
 
+def _scan_to_quarterly_sppd(scan_df):
+    """Convert raw scan fixture data to the quarterly SPPD format
+    returned by db.get_quarterly_sppd()."""
+    df = scan_df.copy()
+    df["week_ending"] = pd.to_datetime(df["week_ending"])
+    df["quarter"] = (df["week_ending"].dt.year.astype(str) + "Q" +
+                     df["week_ending"].dt.quarter.astype(str))
+    quarterly = df.groupby(["sku", "quarter"]).agg(
+        total_units=("units_sold", "sum"),
+        door_count=("store_id", "nunique"),
+    ).reset_index()
+    quarterly["sppd"] = quarterly["total_units"] / quarterly["door_count"] / 91.0
+    return quarterly[["sku", "quarter", "total_units", "door_count", "sppd"]]
+
+
 # ── Fixtures ─────────────────────────────────────────────────────
 
 
@@ -172,6 +187,7 @@ class TestBuildAtRiskData:
             mock_db.get_stores.return_value = sample_stores_df
             mock_db.get_benchmarks.return_value = sample_benchmarks_df
             mock_db.get_products.return_value = multi_product_df
+            mock_db.get_quarterly_sppd.return_value = _scan_to_quarterly_sppd(at_risk_scan_df)
 
             at_risk_df, watchlist_df, summary = build_at_risk_data(default_filters)
 
@@ -190,6 +206,7 @@ class TestBuildAtRiskData:
             mock_db.get_stores.return_value = sample_stores_df
             mock_db.get_benchmarks.return_value = sample_benchmarks_df
             mock_db.get_products.return_value = multi_product_df
+            mock_db.get_quarterly_sppd.return_value = _scan_to_quarterly_sppd(flat_risk_scan_df)
 
             at_risk_df, watchlist_df, summary = build_at_risk_data(default_filters)
 
@@ -208,6 +225,7 @@ class TestBuildAtRiskData:
             mock_db.get_stores.return_value = sample_stores_df
             mock_db.get_benchmarks.return_value = sample_benchmarks_df
             mock_db.get_products.return_value = multi_product_df
+            mock_db.get_quarterly_sppd.return_value = _scan_to_quarterly_sppd(watchlist_scan_df)
 
             at_risk_df, watchlist_df, summary = build_at_risk_data(default_filters)
 
@@ -225,6 +243,7 @@ class TestBuildAtRiskData:
             mock_db.get_stores.return_value = sample_stores_df
             mock_db.get_benchmarks.return_value = sample_benchmarks_df
             mock_db.get_products.return_value = multi_product_df
+            mock_db.get_quarterly_sppd.return_value = _scan_to_quarterly_sppd(at_risk_scan_df)
 
             at_risk_df, watchlist_df, summary = build_at_risk_data(default_filters)
 
@@ -245,6 +264,7 @@ class TestBuildAtRiskData:
             mock_db.get_stores.return_value = sample_stores_df
             mock_db.get_benchmarks.return_value = sample_benchmarks_df
             mock_db.get_products.return_value = multi_product_df
+            mock_db.get_quarterly_sppd.return_value = _scan_to_quarterly_sppd(at_risk_scan_df)
 
             at_risk_df, _, _ = build_at_risk_data(default_filters)
 
@@ -258,6 +278,7 @@ class TestBuildAtRiskData:
             mock_db.get_stores.return_value = pd.DataFrame()
             mock_db.get_benchmarks.return_value = pd.DataFrame()
             mock_db.get_products.return_value = pd.DataFrame()
+            mock_db.get_quarterly_sppd.return_value = pd.DataFrame()
 
             at_risk_df, watchlist_df, summary = build_at_risk_data(default_filters)
 
@@ -273,6 +294,7 @@ class TestBuildAtRiskData:
             mock_db.get_stores.return_value = sample_stores_df
             mock_db.get_benchmarks.return_value = sample_benchmarks_df
             mock_db.get_products.return_value = multi_product_df
+            mock_db.get_quarterly_sppd.return_value = _scan_to_quarterly_sppd(at_risk_scan_df)
 
             _, _, summary = build_at_risk_data(default_filters)
 
@@ -292,6 +314,7 @@ class TestBuildAtRiskData:
             mock_db.get_stores.return_value = sample_stores_df
             mock_db.get_benchmarks.return_value = sample_benchmarks_df
             mock_db.get_products.return_value = multi_product_df
+            mock_db.get_quarterly_sppd.return_value = _scan_to_quarterly_sppd(at_risk_scan_df)
 
             at_risk_df, watchlist_df, _ = build_at_risk_data(default_filters)
 
@@ -327,6 +350,7 @@ class TestBuildAtRiskData:
             mock_db.get_stores.return_value = sample_stores_df
             mock_db.get_benchmarks.return_value = sample_benchmarks_df
             mock_db.get_products.return_value = products_df
+            mock_db.get_quarterly_sppd.return_value = _scan_to_quarterly_sppd(scan_df)
 
             at_risk_df, watchlist_df, _ = build_at_risk_data(default_filters)
 
@@ -379,6 +403,7 @@ class TestTierConsistency:
             mock_db.get_stores.return_value = sample_stores_df
             mock_db.get_benchmarks.return_value = sample_benchmarks_df
             mock_db.get_products.return_value = products_df
+            mock_db.get_quarterly_sppd.return_value = _scan_to_quarterly_sppd(scan_df)
 
             at_risk_df, watchlist_df, _ = build_at_risk_data(default_filters)
 

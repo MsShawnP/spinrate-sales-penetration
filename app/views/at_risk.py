@@ -20,7 +20,7 @@ from app.calculations import (
     calculate_at_risk_score,
     calculate_indexed_sppd,
     calculate_sppd,
-    calculate_velocity_trend,
+    calculate_velocity_trend_from_quarterly,
     days_in_quarter_range,
 )
 from app.components import annotation_callout, dark_callout_card
@@ -110,11 +110,13 @@ def build_at_risk_data(filters):
     indexed_df = calculate_indexed_sppd(sppd_df, benchmarks_df, products_df)
 
     # Trend uses full history (no date filter) so seasonal patterns don't
-    # dominate the OLS slope within a single year.
+    # dominate the OLS slope within a single year.  Uses SQL-aggregated
+    # quarterly SPPD (~600 rows) instead of raw scan data (~1.2M rows)
+    # to avoid OOM on constrained VMs.
     trend_filters = {k: v for k, v in filters.items()
                      if k not in ("start_quarter", "end_quarter")}
-    trend_scan_df = db.get_scan_data(trend_filters)
-    trend_df = calculate_velocity_trend(trend_scan_df, products_df, n_quarters=8)
+    quarterly_sppd_df = db.get_quarterly_sppd(trend_filters)
+    trend_df = calculate_velocity_trend_from_quarterly(quarterly_sppd_df, n_quarters=8)
 
     if indexed_df.empty or trend_df.empty:
         return pd.DataFrame(), pd.DataFrame(), {}

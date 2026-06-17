@@ -11,6 +11,7 @@ from app.calculations import (
     calculate_indexed_sppd,
     calculate_sppd,
     calculate_velocity_trend,
+    calculate_velocity_trend_from_quarterly,
     days_in_quarter_range,
 )
 
@@ -190,6 +191,93 @@ class TestCalculateVelocityTrend:
         empty = pd.DataFrame(columns=["sku", "store_id", "week_ending", "units_sold"])
         result = calculate_velocity_trend(empty, sample_products_df)
         assert result.empty
+
+
+# ── Velocity trend (from quarterly) ────────────────────────────────
+
+
+class TestCalculateVelocityTrendFromQuarterly:
+    """Same logic as TestCalculateVelocityTrend but from pre-aggregated data."""
+
+    def test_rising_trend(self):
+        df = pd.DataFrame([
+            {"sku": "SKU-A", "quarter": "2024Q1", "sppd": 0.5},
+            {"sku": "SKU-A", "quarter": "2024Q2", "sppd": 0.7},
+            {"sku": "SKU-A", "quarter": "2024Q3", "sppd": 0.9},
+            {"sku": "SKU-A", "quarter": "2024Q4", "sppd": 1.1},
+        ])
+        result = calculate_velocity_trend_from_quarterly(df)
+        row = result[result["sku"] == "SKU-A"].iloc[0]
+        assert row["trend"] == "rising"
+        assert row["slope"] > 0
+        assert row["quarters_with_data"] == 4
+
+    def test_declining_trend(self):
+        df = pd.DataFrame([
+            {"sku": "SKU-A", "quarter": "2024Q1", "sppd": 1.2},
+            {"sku": "SKU-A", "quarter": "2024Q2", "sppd": 0.9},
+            {"sku": "SKU-A", "quarter": "2024Q3", "sppd": 0.6},
+            {"sku": "SKU-A", "quarter": "2024Q4", "sppd": 0.3},
+        ])
+        result = calculate_velocity_trend_from_quarterly(df)
+        row = result[result["sku"] == "SKU-A"].iloc[0]
+        assert row["trend"] == "declining"
+        assert row["slope"] < 0
+
+    def test_flat_trend(self):
+        df = pd.DataFrame([
+            {"sku": "SKU-A", "quarter": "2024Q1", "sppd": 1.0},
+            {"sku": "SKU-A", "quarter": "2024Q2", "sppd": 1.01},
+            {"sku": "SKU-A", "quarter": "2024Q3", "sppd": 0.99},
+            {"sku": "SKU-A", "quarter": "2024Q4", "sppd": 1.0},
+        ])
+        result = calculate_velocity_trend_from_quarterly(df)
+        row = result[result["sku"] == "SKU-A"].iloc[0]
+        assert row["trend"] == "flat"
+
+    def test_single_quarter_is_flat(self):
+        df = pd.DataFrame([{"sku": "SKU-A", "quarter": "2024Q3", "sppd": 0.8}])
+        result = calculate_velocity_trend_from_quarterly(df)
+        row = result[result["sku"] == "SKU-A"].iloc[0]
+        assert row["trend"] == "flat"
+        assert row["slope"] == 0.0
+        assert row["quarters_with_data"] == 1
+
+    def test_empty_input(self):
+        empty = pd.DataFrame(columns=["sku", "quarter", "sppd"])
+        result = calculate_velocity_trend_from_quarterly(empty)
+        assert result.empty
+        assert "trend" in result.columns
+
+    def test_multiple_skus(self):
+        df = pd.DataFrame([
+            {"sku": "SKU-A", "quarter": "2024Q1", "sppd": 0.5},
+            {"sku": "SKU-A", "quarter": "2024Q2", "sppd": 1.0},
+            {"sku": "SKU-A", "quarter": "2024Q3", "sppd": 1.5},
+            {"sku": "SKU-B", "quarter": "2024Q1", "sppd": 1.5},
+            {"sku": "SKU-B", "quarter": "2024Q2", "sppd": 1.0},
+            {"sku": "SKU-B", "quarter": "2024Q3", "sppd": 0.5},
+        ])
+        result = calculate_velocity_trend_from_quarterly(df)
+        assert len(result) == 2
+        assert result[result["sku"] == "SKU-A"].iloc[0]["trend"] == "rising"
+        assert result[result["sku"] == "SKU-B"].iloc[0]["trend"] == "declining"
+
+    def test_n_quarters_limits_window(self):
+        df = pd.DataFrame([
+            {"sku": "SKU-A", "quarter": "2023Q1", "sppd": 2.0},
+            {"sku": "SKU-A", "quarter": "2023Q2", "sppd": 1.8},
+            {"sku": "SKU-A", "quarter": "2023Q3", "sppd": 1.6},
+            {"sku": "SKU-A", "quarter": "2023Q4", "sppd": 1.4},
+            {"sku": "SKU-A", "quarter": "2024Q1", "sppd": 0.5},
+            {"sku": "SKU-A", "quarter": "2024Q2", "sppd": 0.7},
+            {"sku": "SKU-A", "quarter": "2024Q3", "sppd": 0.9},
+            {"sku": "SKU-A", "quarter": "2024Q4", "sppd": 1.1},
+        ])
+        result = calculate_velocity_trend_from_quarterly(df, n_quarters=4)
+        row = result[result["sku"] == "SKU-A"].iloc[0]
+        assert row["trend"] == "rising"
+        assert row["quarters_with_data"] == 4
 
 
 # ── At-risk scoring ─────────────────────────────────────────────────

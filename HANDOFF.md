@@ -1,5 +1,18 @@
 # Handoff — Spinrate Sales Penetration
 
+## 2026-06-17 (session 7 — production bug fixes: OOM, legend, headers)
+
+**Started from:** Four production issues: legend/title collision, migration zero movers, expansion headers truncated, at-risk OOM crash.
+
+**Did:** Diagnosed all 4. Fixed #1 (legend below chart), #3 (wider columns), #4 (SQL-aggregated quarterly SPPD: 600 rows vs 1.2M). #2 confirmed as seed data problem (uniform seasonal scaling = zero quadrant movers). Added 7 tests for new calculation function. 146 tests passing. Deployed to production.
+
+**State:** All views working in production. 146 tests. Issue #2 requires differential seasonal patterns in cinderhaven-data-platform seed_config.py.
+
+**Next:**
+1. Run `/ce:compound` — extract learnings
+2. Fix issue #2: add differential seasonal multipliers in cinderhaven-data-platform so SKUs actually change quadrants between quarters
+3. EDI fixes (#9, #10, #11) — separate session
+
 ## 2026-06-17 (session 6 — production data fix + UI polish)
 
 **Started from:** Production had stale data (ACV clustered 25-35%), Expansion/At-Risk tabs broken, legend truncation, missing migration protagonist, SPPD footer only on quadrant tab.

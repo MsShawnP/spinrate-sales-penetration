@@ -256,17 +256,18 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
             rangemode="tozero",
         ),
         annotations=quadrant_annotations,
-        margin=dict(l=70, r=20, t=70, b=50),
+        margin=dict(l=70, r=20, t=70, b=80),
         legend=dict(
             orientation="h",
-            yanchor="bottom",
-            y=1.02,
+            yanchor="top",
+            y=-0.12,
             xanchor="left",
             x=0,
             font=dict(family=FONT_SANS, size=12, color=TEXT_SECONDARY),
             bgcolor="rgba(0,0,0,0)",
             entrywidth=180,
             entrywidthmode="pixels",
+            tracegroupgap=0,
         ),
     )
 
