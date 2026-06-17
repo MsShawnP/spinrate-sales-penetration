@@ -70,6 +70,19 @@ _SANKEY_ORDER = [
 _SANKEY_COLORS = [HK_35, HK_85, TOKYO_70, DISABLED]
 
 
+def _migration_hover(df, sku_col, name_col, quadrant_col, sppd_col, acv_col, dollars_col):
+    """Pre-format hover text for migration chart traces."""
+    return [
+        f"<b>{row[name_col]}</b><br>"
+        f"SKU: {row[sku_col]}<br>"
+        f"SPPD: {row[sppd_col]:.4f}<br>"
+        f"ACV%: {row[acv_col]:.1%}<br>"
+        f"Total $: ${row[dollars_col]:,.0f}<br>"
+        f"Quadrant: {row[quadrant_col]}"
+        for _, row in df.iterrows()
+    ]
+
+
 # ── Helpers ──────────────────────────────────────────────────────────
 
 
@@ -282,7 +295,8 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
             opacity=0.3,
             line=dict(width=1, color=REFERENCE),
         ),
-        hoverinfo="skip",
+        hovertext=_migration_hover(migration_df, "sku", "product_name_p1", "quadrant_p1", "sppd_p1", "acv_pct_p1", "total_dollars_p1"),
+        hoverinfo="text",
         showlegend=True,
     ))
 
@@ -307,7 +321,8 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
                 opacity=0.7,
                 line=dict(width=1, color=INK),
             ),
-            hoverinfo="skip",
+            hovertext=_migration_hover(stayers, "sku", "product_name_p2", "quadrant_p2", "sppd_p2", "acv_pct_p2", "total_dollars_p2"),
+            hoverinfo="text",
             showlegend=True,
         ))
 
@@ -333,7 +348,8 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
                 opacity=1.0,
                 line=dict(width=1, color=INK),
             ),
-            hoverinfo="skip",
+            hovertext=_migration_hover(favorable, "sku", "product_name_p2", "quadrant_p2", "sppd_p2", "acv_pct_p2", "total_dollars_p2"),
+            hoverinfo="text",
             showlegend=True,
         ))
 
@@ -359,7 +375,8 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
                 opacity=1.0,
                 line=dict(width=1, color=INK),
             ),
-            hoverinfo="skip",
+            hovertext=_migration_hover(unfavorable, "sku", "product_name_p2", "quadrant_p2", "sppd_p2", "acv_pct_p2", "total_dollars_p2"),
+            hoverinfo="text",
             showlegend=True,
         ))
 
@@ -385,7 +402,8 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
                 opacity=1.0,
                 line=dict(width=1, color=INK),
             ),
-            hoverinfo="skip",
+            hovertext=_migration_hover(lateral, "sku", "product_name_p2", "quadrant_p2", "sppd_p2", "acv_pct_p2", "total_dollars_p2"),
+            hoverinfo="text",
             showlegend=True,
         ))
 
@@ -497,7 +515,8 @@ def build_side_by_side(migration_df, q1_label, q2_label):
             migration_df["total_dollars_p1"],
         ], axis=-1).tolist(),
         marker=dict(size=10, color=colors_p1.tolist(), opacity=0.8, line=dict(width=1, color=INK)),
-        hoverinfo="skip",
+        hovertext=_migration_hover(migration_df, "sku", "product_name_p1", "quadrant_p1", "sppd_p1", "acv_pct_p1", "total_dollars_p1"),
+        hoverinfo="text",
         showlegend=False,
     ), row=1, col=1)
 
@@ -526,7 +545,8 @@ def build_side_by_side(migration_df, q1_label, q2_label):
             migration_df["total_dollars_p2"],
         ], axis=-1).tolist(),
         marker=dict(size=10, color=colors_p2.tolist(), opacity=0.8, line=dict(width=1, color=INK)),
-        hoverinfo="skip",
+        hovertext=_migration_hover(migration_df, "sku", "product_name_p2", "quadrant_p2", "sppd_p2", "acv_pct_p2", "total_dollars_p2"),
+        hoverinfo="text",
         showlegend=False,
     ), row=1, col=2)
 

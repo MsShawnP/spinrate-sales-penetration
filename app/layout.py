@@ -63,8 +63,17 @@ def _build_content_area():
 
 
 def _build_narrative_section():
-    """Narrative intro section populated by callback on page load."""
-    return html.Div(id="narrative-section", className="narrative-section")
+    """Narrative intro as a collapsible panel below the dashboard views."""
+    return html.Details(
+        [
+            html.Summary(
+                "Read the strategic narrative",
+                className="narrative-toggle",
+            ),
+            html.Div(id="narrative-section", className="narrative-section"),
+        ],
+        className="narrative-details",
+    )
 
 
 # ── Protagonist discovery ────────────────────────────────────────
@@ -416,7 +425,6 @@ def register_layout():
                 id="filter-state", storage_type="session", data=json.dumps(DEFAULT_FILTER_STATE)
             ),
             dcc.Store(id="selected-sku", storage_type="memory"),
-            _build_narrative_section(),
             html.Div(
                 [
                     _build_tabs(),
@@ -426,6 +434,7 @@ def register_layout():
                 ],
                 className="lailara-container",
             ),
+            _build_narrative_section(),
         ]
     )
 

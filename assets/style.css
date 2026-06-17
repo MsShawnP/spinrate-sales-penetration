@@ -230,10 +230,43 @@
 
 /* ── Narrative intro (U7) ── */
 
+.narrative-details {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px 32px;
+}
+
+.narrative-toggle {
+    font-family: var(--ll-sans);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ll-chicago-20);
+    cursor: pointer;
+    padding: 16px 0;
+    list-style: none;
+    border-top: 1px solid var(--ll-london-85);
+}
+
+.narrative-toggle::-webkit-details-marker {
+    display: none;
+}
+
+.narrative-toggle::before {
+    content: '▸ ';
+}
+
+.narrative-details[open] > .narrative-toggle::before {
+    content: '▾ ';
+}
+
+.narrative-toggle:hover {
+    color: var(--ll-chicago-10);
+}
+
 .narrative-section {
     max-width: 900px;
     margin: 0 auto;
-    padding: 48px 24px 32px;
+    padding: 16px 0 32px;
 }
 
 .narrative-content {

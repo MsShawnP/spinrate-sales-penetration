@@ -143,3 +143,23 @@ def register_filter_callbacks():
             DEFAULT_START_QUARTER,
             DEFAULT_END_QUARTER,
         )
+
+    @callback(
+        Output("filter-retailer", "options"),
+        Output("filter-region", "options"),
+        Input("filter-state", "data"),
+    )
+    def _populate_filter_options(_filter_json):
+        """Populate retailer and region options from the stores dimension table."""
+        try:
+            from app import db
+            stores_df = db.get_stores()
+            if stores_df.empty:
+                return [], []
+            retailers = sorted(stores_df["retailer"].dropna().unique())
+            regions = sorted(stores_df["region"].dropna().unique())
+            retailer_opts = [{"label": r, "value": r} for r in retailers]
+            region_opts = [{"label": r, "value": r} for r in regions]
+            return retailer_opts, region_opts
+        except Exception:
+            return [], []

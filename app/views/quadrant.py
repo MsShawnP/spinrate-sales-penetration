@@ -97,6 +97,20 @@ def _assign_product_line_colors(product_lines):
 
 
 
+def _hover_text(df):
+    """Pre-format hover text for each row so Plotly renders it directly."""
+    return [
+        f"<b>{row['product_name']}</b><br>"
+        f"SKU: {row['sku']}<br>"
+        f"SPPD: {row['sppd']:.4f}<br>"
+        f"ACV%: {row['acv_pct']:.1%}<br>"
+        f"Total $: ${row['total_dollars']:,.0f}<br>"
+        f"Doors: {int(row['door_count']):,}<br>"
+        f"Quadrant: {row['quadrant']}"
+        for _, row in df.iterrows()
+    ]
+
+
 def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False):
     """Build the Plotly bubble scatter figure.
 
@@ -150,7 +164,8 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
                     opacity=normal["opacity"].tolist(),
                     line=dict(width=1, color=INK),
                 ),
-                hoverinfo="skip",
+                hovertext=_hover_text(normal),
+                hoverinfo="text",
                 showlegend=True,
             ))
 
@@ -175,7 +190,8 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
                     opacity=0.4,
                     line=dict(width=2, color=color, dash="dash"),
                 ),
-                hoverinfo="skip",
+                hovertext=_hover_text(low_door),
+                hoverinfo="text",
                 showlegend=True,
             ))
 
@@ -294,6 +310,58 @@ def _build_empty_figure():
     return fig
 
 
+def _build_quadrant_summary(chart_df):
+    """Build a summary line below the chart showing counts and top items per quadrant."""
+    if chart_df.empty:
+        return []
+
+    quadrant_order = [
+        ("star", "stars"),
+        ("hidden_gem", "hidden gems"),
+        ("wide_but_dead", "wide but dead"),
+        ("question_mark", "question marks"),
+    ]
+
+    parts = []
+    for key, label in quadrant_order:
+        q_label = QUADRANT_LABELS[key]
+        subset = chart_df[chart_df["quadrant"] == q_label]
+        count = len(subset)
+        if count > 0:
+            top = subset.nlargest(1, "total_dollars").iloc[0]
+            parts.append(
+                html.Span(
+                    [
+                        html.Strong(f"{count}"),
+                        f" {label}",
+                        html.Span(
+                            f" (top: {top['product_name']})",
+                            style={"color": TEXT_SECONDARY},
+                        ),
+                    ],
+                )
+            )
+        else:
+            parts.append(html.Span([html.Strong("0"), f" {label}"]))
+
+    children = []
+    for i, part in enumerate(parts):
+        if i > 0:
+            children.append(html.Span(" · ", style={"color": DISABLED, "margin": "0 4px"}))
+        children.append(part)
+
+    return html.Div(
+        children,
+        style={
+            "fontFamily": FONT_SANS,
+            "fontSize": "14px",
+            "color": INK,
+            "padding": "12px 0",
+            "lineHeight": "1.6",
+        },
+    )
+
+
 # ── Layout ────────────────────────────────────────────────────────
 
 
@@ -336,6 +404,8 @@ def layout():
                 config=CHART_CONFIG,
                 style={"minHeight": "500px"},
             ),
+            # Summary callout (quadrant counts + top items).
+            html.Div(id="quadrant-summary", className="chart-summary"),
             # SPPD formula note.
             html.P(
                 SPPD_FORMULA,
@@ -415,6 +485,7 @@ def register_callbacks():
     # Main chart update callback.
     @callback(
         Output("quadrant-chart", "figure"),
+        Output("quadrant-summary", "children"),
         Input("filter-state", "data"),
         Input("indexed-mode", "data"),
     )
@@ -433,10 +504,10 @@ def register_callbacks():
             products_df = db.get_products()
         except Exception:
             logger.exception("Quadrant chart callback failed")
-            return _build_empty_figure()
+            return _build_empty_figure(), []
 
         if scan_df.empty or dist_df.empty:
-            return _build_empty_figure()
+            return _build_empty_figure(), []
 
         # Compute metrics.
         start_q = filters.get("start_quarter", "Q1 2025")
@@ -447,7 +518,7 @@ def register_callbacks():
         acv_df = calculate_acv_pct(dist_df, stores_df)
 
         if sppd_df.empty or acv_df.empty:
-            return _build_empty_figure()
+            return _build_empty_figure(), []
 
         # Merge SPPD + ACV + product info.
         chart_df = sppd_df.merge(acv_df[["sku", "acv_pct"]], on="sku", how="inner")
@@ -462,7 +533,7 @@ def register_callbacks():
         chart_df["total_dollars"] = chart_df["total_dollars"].fillna(0)
 
         if chart_df.empty:
-            return _build_empty_figure()
+            return _build_empty_figure(), []
 
         # Indexed SPPD.
         if indexed_mode and not products_df.empty and not benchmarks_df.empty:
@@ -501,7 +572,8 @@ def register_callbacks():
         chart_df["product_line"] = chart_df["product_line"].fillna("Unknown")
 
         fig = _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode)
-        return fig
+        summary = _build_quadrant_summary(chart_df)
+        return fig, summary
 
     # Detail card callback — renders when selected-sku changes.
     @callback(

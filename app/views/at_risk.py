@@ -196,24 +196,21 @@ _COLUMN_DEFS = [
     {
         "field": "sku",
         "headerName": "SKU",
-        "width": 130,
+        "width": 110,
         "pinned": "left",
     },
     {
         "field": "product_name",
         "headerName": "Item Name",
-        "width": 180,
+        "minWidth": 130,
+        "flex": 1,
         "tooltipField": "product_name",
-    },
-    {
-        "field": "product_line",
-        "headerName": "Product Line",
-        "width": 140,
+        "cellStyle": {"textOverflow": "ellipsis", "overflow": "hidden", "whiteSpace": "nowrap"},
     },
     {
         "field": "tier_label",
         "headerName": "Tier",
-        "width": 150,
+        "width": 130,
         "cellStyle": {"function": """
             params.data.at_risk_tier === 'act_now'
                 ? {background: '#fde8e7', color: '#7a0906', fontWeight: 'bold'}
@@ -225,19 +222,19 @@ _COLUMN_DEFS = [
     {
         "field": "signal",
         "headerName": "Signal",
-        "width": 130,
+        "width": 100,
         "tooltipField": "signal",
     },
     {
         "field": "indexed_sppd",
-        "headerName": "Indexed SPPD",
-        "width": 120,
+        "headerName": "Idx SPPD",
+        "width": 90,
         "valueFormatter": {"function": "d3.format('.2f')(params.value)"},
     },
     {
         "field": "trend",
         "headerName": "Trend",
-        "width": 100,
+        "width": 80,
         "cellStyle": {"function": """
             params.value === 'declining'
                 ? {color: '#b82d4a'}
@@ -249,19 +246,19 @@ _COLUMN_DEFS = [
     {
         "field": "sppd",
         "headerName": "SPPD",
-        "width": 90,
+        "width": 80,
         "valueFormatter": {"function": "d3.format('.4f')(params.value)"},
     },
     {
         "field": "current_dollars",
         "headerName": "Current $",
-        "width": 110,
+        "width": 100,
         "valueFormatter": {"function": "d3.format('$,.0f')(params.value)"},
     },
     {
         "field": "velocity_gap",
-        "headerName": "Gap vs Median",
-        "width": 120,
+        "headerName": "Gap vs Med",
+        "width": 100,
         "valueFormatter": {"function": "d3.format('+.1%')(params.value)"},
         "sort": "asc",
     },
