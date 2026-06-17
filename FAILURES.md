@@ -2,6 +2,23 @@
 
 *What didn't work and why, so we don't repeat it.*
 
+### 2026-06-17 — Production data never synced after archetype variance fix
+- **What happened:** Production ACV was clustered 27.5%-34.5% despite local database having correct 5%-62% range. Expansion and At-Risk tabs failed to load meaningful data in production.
+- **Root cause:** The archetype-driven variance was added to seed_config.py and re-seeded locally, but the production Fly.io Postgres was never updated. Multiple sessions verified views against localhost but nobody synced to production.
+- **Fix:** Built a Python CSV dump → gzip → fly sftp → on-machine restore pipeline. Transferred 5 mart tables (10 MB compressed).
+- **Lesson:** After any data schema or seed change, add a production data verification step to the deploy checklist. A post-deploy smoke script that checks ACV min/max/std would catch this instantly.
+
+### 2026-06-17 — fly postgres connect password auth failure
+- **What happened:** `fly postgres connect --app cinderhaven-db` failed with "password authentication failed for user postgres".
+- **Root cause:** The Fly Postgres secrets (OPERATOR_PASSWORD, SU_PASSWORD) were in "Staged" state, not "Deployed". The database was running with older credentials.
+- **Fix:** Bypassed by SSHing into the spinrate app machine instead, which already has the correct DATABASE_URL secret.
+- **Lesson:** For Cinderhaven tools, use `fly ssh console --app <tool-app> -C "python3 ..."` to run queries through the app's configured DATABASE_URL rather than connecting to the Postgres app directly.
+
+### 2026-06-17 — No pg_dump/psql on Windows or WSL for database sync
+- **What happened:** Needed to transfer database tables from local to production. Neither pg_dump nor psql were available on Windows or in WSL.
+- **Fix:** Wrote a Python script using psycopg2's `copy_expert()` to dump tables to CSV, gzip-compressed them, uploaded via `fly sftp put`, and restored on the production machine with another Python script.
+- **Lesson:** Keep a Python-based database sync utility in the Cinderhaven data platform for future use. The CSV dump + gzip + sftp pattern works reliably and doesn't require PostgreSQL client tools.
+
 ### 2026-06-16 — Fading archetype decline too shallow, masked by seasonal bump
 - **What happened:** After adding the "fading" archetype (above-median velocity declining over time), the watchlist tier had 0 items. All 3 fading SKUs showed trend="flat" instead of "declining."
 - **Root cause:** The fading decline factor (1.15→0.70, 39% drop over 2 years) was too shallow. The Q4 seasonal multiplier in the synthetic data boosts raw values ~30-40% every year, creating a sawtooth pattern that the OLS regression sees as flat. The `_TREND_THRESHOLD = 0.05` (5% of mean) requires a strong enough slope to overcome seasonal noise.

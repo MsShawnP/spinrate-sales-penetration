@@ -2,6 +2,16 @@
 
 *Durable choices with rationale. Updated as decisions are made.*
 
+### 2026-06-17 — Migration protagonist uses real quadrant movers, not a star copy
+- **Why:** The narrative's migration section was copying the star SKU's data and showing a generic "movement tells the story" paragraph. This gave no concrete example of quadrant migration. Querying two consecutive quarters and finding a SKU that actually changed quadrants makes the narrative data-driven end to end.
+- **Scope:** Narrative intro in layout.py. Falls back to star copy when only single-quarter data is available (e.g., in tests with minimal fixtures).
+- **Do not:** Hardcode a specific migrant SKU. The discovery is runtime — whichever SKU had the biggest rank_delta between the penultimate and final quarter in the filter range wins.
+
+### 2026-06-17 — SPPD formula footer on every tab, not just quadrant
+- **Why:** SPPD is the core metric across all four views. Users landing on Migration, Expansion, or At-Risk need the same definition context. Showing it only on quadrant created an inconsistency.
+- **Scope:** All four view layout functions (quadrant, migration, expansion, at_risk). Uses the shared `SPPD_FORMULA` constant from constants.py.
+- **Do not:** Remove from any tab. If a view uses SPPD (directly or derived), it gets the footer.
+
 ### 2026-06-16 — Call .tolist() on all pandas Series passed to Plotly traces
 - **Why:** Plotly Python 6.0 binary-encodes numpy arrays as `{dtype, bdata}` which Plotly.js 3.6.0 (bundled with Dash 3.x) cannot decode, rendering charts empty. Converting to Python lists forces JSON-array serialization.
 - **Scope:** Every `go.Scatter()`, `go.Bar()`, or similar Plotly trace constructor in any Dash 3.x app using Plotly 6.0. Applies to x, y, customdata, marker.size, marker.color, and any other array property.
