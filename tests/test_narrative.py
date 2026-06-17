@@ -43,6 +43,16 @@ def narrative_scan_df():
 
 
 @pytest.fixture
+def narrative_scan_agg_df(narrative_scan_df):
+    """Pre-aggregated scan data matching get_scan_data_agg() output."""
+    return narrative_scan_df.groupby("sku").agg(
+        total_units=("units_sold", "sum"),
+        total_dollars=("dollars_sold", "sum"),
+        door_count=("store_id", "nunique"),
+    ).reset_index()
+
+
+@pytest.fixture
 def narrative_dist_df():
     """Distribution matching the scan data store counts."""
     rows = []
@@ -100,10 +110,10 @@ def narrative_products_df():
 
 class TestFindProtagonists:
     def test_finds_all_four_archetypes(
-        self, narrative_scan_df, narrative_dist_df, sample_stores_df, narrative_products_df
+        self, narrative_scan_agg_df, narrative_dist_df, sample_stores_df, narrative_products_df
     ):
         protagonists = _find_protagonists(
-            narrative_scan_df, narrative_dist_df, sample_stores_df, narrative_products_df
+            narrative_scan_agg_df, narrative_dist_df, sample_stores_df, narrative_products_df
         )
         assert "star" in protagonists
         assert "hidden_gem" in protagonists
@@ -111,18 +121,18 @@ class TestFindProtagonists:
         assert "question_mark" in protagonists
 
     def test_includes_migration_story(
-        self, narrative_scan_df, narrative_dist_df, sample_stores_df, narrative_products_df
+        self, narrative_scan_agg_df, narrative_dist_df, sample_stores_df, narrative_products_df
     ):
         protagonists = _find_protagonists(
-            narrative_scan_df, narrative_dist_df, sample_stores_df, narrative_products_df
+            narrative_scan_agg_df, narrative_dist_df, sample_stores_df, narrative_products_df
         )
         assert "migration" in protagonists
 
     def test_protagonist_has_product_name(
-        self, narrative_scan_df, narrative_dist_df, sample_stores_df, narrative_products_df
+        self, narrative_scan_agg_df, narrative_dist_df, sample_stores_df, narrative_products_df
     ):
         protagonists = _find_protagonists(
-            narrative_scan_df, narrative_dist_df, sample_stores_df, narrative_products_df
+            narrative_scan_agg_df, narrative_dist_df, sample_stores_df, narrative_products_df
         )
         for key, p in protagonists.items():
             assert "product_name" in p
@@ -159,6 +169,25 @@ class TestFindProtagonists:
                     "week_ending": q_date, "units_sold": 100, "dollars_sold": 500.0,
                 })
         scan_df = pd.DataFrame(rows)
+        scan_agg = scan_df.groupby("sku").agg(
+            total_units=("units_sold", "sum"),
+            total_dollars=("dollars_sold", "sum"),
+            door_count=("store_id", "nunique"),
+        ).reset_index()
+
+        # Per-quarter aggregations for migration protagonist.
+        q3_rows = [r for r in rows if r["week_ending"] == "2025-08-01"]
+        q4_rows = [r for r in rows if r["week_ending"] == "2025-11-01"]
+        prev_q_agg = pd.DataFrame(q3_rows).groupby("sku").agg(
+            total_units=("units_sold", "sum"),
+            total_dollars=("dollars_sold", "sum"),
+            door_count=("store_id", "nunique"),
+        ).reset_index()
+        end_q_agg = pd.DataFrame(q4_rows).groupby("sku").agg(
+            total_units=("units_sold", "sum"),
+            total_dollars=("dollars_sold", "sum"),
+            door_count=("store_id", "nunique"),
+        ).reset_index()
 
         dist_rows = list(narrative_dist_df.to_dict("records"))
         for i in range(1, 3):
@@ -180,8 +209,9 @@ class TestFindProtagonists:
         products_df = pd.DataFrame(products)
 
         protagonists = _find_protagonists(
-            scan_df, dist_df, sample_stores_df, products_df,
+            scan_agg, dist_df, sample_stores_df, products_df,
             filters={"start_quarter": "Q3 2025", "end_quarter": "Q4 2025"},
+            prev_q_agg=prev_q_agg, end_q_agg=end_q_agg,
         )
         assert "migration" in protagonists
         m = protagonists["migration"]
@@ -196,10 +226,10 @@ class TestFindProtagonists:
 
 class TestRenderNarrative:
     def test_renders_all_archetypes(
-        self, narrative_scan_df, narrative_dist_df, sample_stores_df, narrative_products_df
+        self, narrative_scan_agg_df, narrative_dist_df, sample_stores_df, narrative_products_df
     ):
         protagonists = _find_protagonists(
-            narrative_scan_df, narrative_dist_df, sample_stores_df, narrative_products_df
+            narrative_scan_agg_df, narrative_dist_df, sample_stores_df, narrative_products_df
         )
         result = _render_narrative(protagonists)
         text = _extract_text(result)
@@ -210,11 +240,11 @@ class TestRenderNarrative:
         assert "migration" in text.lower() or "Movement" in text
 
     def test_narrative_uses_business_language(
-        self, narrative_scan_df, narrative_dist_df, sample_stores_df, narrative_products_df
+        self, narrative_scan_agg_df, narrative_dist_df, sample_stores_df, narrative_products_df
     ):
         """Narrative avoids raw jargon on first use."""
         protagonists = _find_protagonists(
-            narrative_scan_df, narrative_dist_df, sample_stores_df, narrative_products_df
+            narrative_scan_agg_df, narrative_dist_df, sample_stores_df, narrative_products_df
         )
         result = _render_narrative(protagonists)
         text = _extract_text(result)
@@ -222,10 +252,10 @@ class TestRenderNarrative:
         assert "units per store per day" in text
 
     def test_narrative_ends_with_protagonist(
-        self, narrative_scan_df, narrative_dist_df, sample_stores_df, narrative_products_df
+        self, narrative_scan_agg_df, narrative_dist_df, sample_stores_df, narrative_products_df
     ):
         protagonists = _find_protagonists(
-            narrative_scan_df, narrative_dist_df, sample_stores_df, narrative_products_df
+            narrative_scan_agg_df, narrative_dist_df, sample_stores_df, narrative_products_df
         )
         result = _render_narrative(protagonists)
         text = _extract_text(result)

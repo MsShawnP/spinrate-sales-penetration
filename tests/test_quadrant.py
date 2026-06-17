@@ -373,7 +373,7 @@ class TestFilterIntegration:
     ):
         """Return a dict of mock return values for db functions."""
         return {
-            "app.db.get_scan_data": sample_scan_df,
+            "app.db.get_scan_data_agg": sample_scan_df,
             "app.db.get_distribution": sample_dist_df,
             "app.db.get_stores": sample_stores_df,
             "app.db.get_benchmarks": sample_benchmarks_df,

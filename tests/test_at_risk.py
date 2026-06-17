@@ -12,6 +12,17 @@ from app.views.at_risk import (
 )
 
 
+def _agg_scan(scan_df):
+    """Aggregate raw scan fixture to match get_scan_data_agg() output."""
+    if scan_df.empty:
+        return pd.DataFrame(columns=["sku", "total_units", "total_dollars", "door_count"])
+    return scan_df.groupby("sku").agg(
+        total_units=("units_sold", "sum"),
+        total_dollars=("dollars_sold", "sum"),
+        door_count=("store_id", "nunique"),
+    ).reset_index()
+
+
 def _scan_to_quarterly_sppd(scan_df):
     """Convert raw scan fixture data to the quarterly SPPD format
     returned by db.get_quarterly_sppd()."""
@@ -36,7 +47,7 @@ def mock_db_returns(
 ):
     """Patch db module to return conftest sample DataFrames."""
     with patch("app.db", create=True) as mock_db:
-        mock_db.get_scan_data.return_value = sample_scan_df.copy()
+        mock_db.get_scan_data_agg.return_value = _agg_scan(sample_scan_df)
         mock_db.get_stores.return_value = sample_stores_df.copy()
         mock_db.get_benchmarks.return_value = sample_benchmarks_df.copy()
         mock_db.get_products.return_value = sample_products_df.copy()
@@ -183,7 +194,7 @@ class TestBuildAtRiskData:
     ):
         """SKU below median + declining → act now tier, both signals."""
         with patch("app.db", create=True) as mock_db:
-            mock_db.get_scan_data.return_value = at_risk_scan_df
+            mock_db.get_scan_data_agg.return_value = _agg_scan(at_risk_scan_df)
             mock_db.get_stores.return_value = sample_stores_df
             mock_db.get_benchmarks.return_value = sample_benchmarks_df
             mock_db.get_products.return_value = multi_product_df
@@ -202,7 +213,7 @@ class TestBuildAtRiskData:
     ):
         """SKU below median + flat → fix or rationalize tier, level signal."""
         with patch("app.db", create=True) as mock_db:
-            mock_db.get_scan_data.return_value = flat_risk_scan_df
+            mock_db.get_scan_data_agg.return_value = _agg_scan(flat_risk_scan_df)
             mock_db.get_stores.return_value = sample_stores_df
             mock_db.get_benchmarks.return_value = sample_benchmarks_df
             mock_db.get_products.return_value = multi_product_df
@@ -221,7 +232,7 @@ class TestBuildAtRiskData:
     ):
         """SKU above median + declining → watchlist tier, trend signal."""
         with patch("app.db", create=True) as mock_db:
-            mock_db.get_scan_data.return_value = watchlist_scan_df
+            mock_db.get_scan_data_agg.return_value = _agg_scan(watchlist_scan_df)
             mock_db.get_stores.return_value = sample_stores_df
             mock_db.get_benchmarks.return_value = sample_benchmarks_df
             mock_db.get_products.return_value = multi_product_df
@@ -239,7 +250,7 @@ class TestBuildAtRiskData:
     ):
         """SKU above median + rising/flat → excluded from all tiers."""
         with patch("app.db", create=True) as mock_db:
-            mock_db.get_scan_data.return_value = at_risk_scan_df
+            mock_db.get_scan_data_agg.return_value = _agg_scan(at_risk_scan_df)
             mock_db.get_stores.return_value = sample_stores_df
             mock_db.get_benchmarks.return_value = sample_benchmarks_df
             mock_db.get_products.return_value = multi_product_df
@@ -260,7 +271,7 @@ class TestBuildAtRiskData:
     ):
         """Act-now items are sorted by velocity gap ascending (worst first)."""
         with patch("app.db", create=True) as mock_db:
-            mock_db.get_scan_data.return_value = at_risk_scan_df
+            mock_db.get_scan_data_agg.return_value = _agg_scan(at_risk_scan_df)
             mock_db.get_stores.return_value = sample_stores_df
             mock_db.get_benchmarks.return_value = sample_benchmarks_df
             mock_db.get_products.return_value = multi_product_df
@@ -274,7 +285,7 @@ class TestBuildAtRiskData:
 
     def test_empty_scan_data(self, default_filters):
         with patch("app.db", create=True) as mock_db:
-            mock_db.get_scan_data.return_value = pd.DataFrame()
+            mock_db.get_scan_data_agg.return_value = pd.DataFrame()
             mock_db.get_stores.return_value = pd.DataFrame()
             mock_db.get_benchmarks.return_value = pd.DataFrame()
             mock_db.get_products.return_value = pd.DataFrame()
@@ -290,7 +301,7 @@ class TestBuildAtRiskData:
         self, at_risk_scan_df, sample_stores_df, sample_benchmarks_df, multi_product_df, default_filters
     ):
         with patch("app.db", create=True) as mock_db:
-            mock_db.get_scan_data.return_value = at_risk_scan_df
+            mock_db.get_scan_data_agg.return_value = _agg_scan(at_risk_scan_df)
             mock_db.get_stores.return_value = sample_stores_df
             mock_db.get_benchmarks.return_value = sample_benchmarks_df
             mock_db.get_products.return_value = multi_product_df
@@ -310,7 +321,7 @@ class TestBuildAtRiskData:
         """Each row has a signal column with valid label."""
         valid_signals = {"Level", "Trend", "Level + Trend"}
         with patch("app.db", create=True) as mock_db:
-            mock_db.get_scan_data.return_value = at_risk_scan_df
+            mock_db.get_scan_data_agg.return_value = _agg_scan(at_risk_scan_df)
             mock_db.get_stores.return_value = sample_stores_df
             mock_db.get_benchmarks.return_value = sample_benchmarks_df
             mock_db.get_products.return_value = multi_product_df
@@ -346,7 +357,7 @@ class TestBuildAtRiskData:
         ])
 
         with patch("app.db", create=True) as mock_db:
-            mock_db.get_scan_data.return_value = scan_df
+            mock_db.get_scan_data_agg.return_value = _agg_scan(scan_df)
             mock_db.get_stores.return_value = sample_stores_df
             mock_db.get_benchmarks.return_value = sample_benchmarks_df
             mock_db.get_products.return_value = products_df
@@ -399,7 +410,7 @@ class TestTierConsistency:
         direct_scored = calculate_at_risk_score(indexed_df, trend_df)
 
         with patch("app.db", create=True) as mock_db:
-            mock_db.get_scan_data.return_value = scan_df
+            mock_db.get_scan_data_agg.return_value = _agg_scan(scan_df)
             mock_db.get_stores.return_value = sample_stores_df
             mock_db.get_benchmarks.return_value = sample_benchmarks_df
             mock_db.get_products.return_value = products_df

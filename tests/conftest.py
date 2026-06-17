@@ -65,6 +65,17 @@ def sample_scan_df():
 
 
 @pytest.fixture
+def sample_scan_agg_df(sample_scan_df):
+    """Pre-aggregated scan data matching get_scan_data_agg() output."""
+    agg = sample_scan_df.groupby("sku").agg(
+        total_units=("units_sold", "sum"),
+        total_dollars=("dollars_sold", "sum"),
+        door_count=("store_id", "nunique"),
+    ).reset_index()
+    return agg
+
+
+@pytest.fixture
 def sample_scan_quarterly_df():
     """Scan data spanning 4 quarters for velocity trend testing.
 

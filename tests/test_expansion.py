@@ -13,6 +13,17 @@ from app.views.expansion import (
 )
 
 
+def _agg_scan(scan_df):
+    """Aggregate raw scan fixture to match get_scan_data_agg() output."""
+    if scan_df.empty:
+        return pd.DataFrame(columns=["sku", "total_units", "total_dollars", "door_count"])
+    return scan_df.groupby("sku").agg(
+        total_units=("units_sold", "sum"),
+        total_dollars=("dollars_sold", "sum"),
+        door_count=("store_id", "nunique"),
+    ).reset_index()
+
+
 # ── Fixtures specific to expansion tests ─────────────────────────────
 
 
@@ -22,7 +33,7 @@ def mock_db_returns(
 ):
     """Patch db module to return conftest sample DataFrames."""
     with patch("app.db", create=True) as mock_db:
-        mock_db.get_scan_data.return_value = sample_scan_df.copy()
+        mock_db.get_scan_data_agg.return_value = _agg_scan(sample_scan_df)
         mock_db.get_distribution.return_value = sample_dist_df.copy()
         mock_db.get_stores.return_value = sample_stores_df.copy()
         mock_db.get_benchmarks.return_value = sample_benchmarks_df.copy()
@@ -66,7 +77,7 @@ class TestBuildExpansionData:
         ])
 
         with patch("app.db", create=True) as mock_db:
-            mock_db.get_scan_data.return_value = scan_df
+            mock_db.get_scan_data_agg.return_value = _agg_scan(scan_df)
             mock_db.get_distribution.return_value = dist_df
             mock_db.get_stores.return_value = sample_stores_df
             mock_db.get_benchmarks.return_value = sample_benchmarks_df
@@ -78,7 +89,7 @@ class TestBuildExpansionData:
 
     def test_empty_scan_data(self, default_filters):
         with patch("app.db", create=True) as mock_db:
-            mock_db.get_scan_data.return_value = pd.DataFrame()
+            mock_db.get_scan_data_agg.return_value = pd.DataFrame()
             mock_db.get_distribution.return_value = pd.DataFrame()
             mock_db.get_stores.return_value = pd.DataFrame()
             mock_db.get_benchmarks.return_value = pd.DataFrame()

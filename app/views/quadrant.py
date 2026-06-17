@@ -21,8 +21,8 @@ from app.app import app
 from app.calculations import (
     calculate_acv_pct,
     calculate_indexed_sppd,
-    calculate_sppd,
-    calculate_velocity_trend,
+    calculate_sppd_from_agg,
+    calculate_velocity_trend_from_quarterly,
     classify_quadrant,
     days_in_quarter_range,
 )
@@ -543,7 +543,7 @@ def register_callbacks():
         indexed_mode = bool(indexed_mode)
 
         try:
-            scan_df = db.get_scan_data(filters)
+            scan_agg = db.get_scan_data_agg(filters)
             dist_df = db.get_distribution(filters)
             stores_df = db.get_stores()
             benchmarks_df = db.get_benchmarks()
@@ -552,7 +552,7 @@ def register_callbacks():
             logger.exception("Quadrant chart callback failed")
             return _build_empty_figure(), []
 
-        if scan_df.empty or dist_df.empty:
+        if scan_agg.empty or dist_df.empty:
             return _build_empty_figure(), []
 
         # Compute metrics.
@@ -560,7 +560,7 @@ def register_callbacks():
         end_q = filters.get("end_quarter", "Q4 2025")
         days = days_in_quarter_range(start_q, end_q)
 
-        sppd_df = calculate_sppd(scan_df, days)
+        sppd_df = calculate_sppd_from_agg(scan_agg, days)
         acv_df = calculate_acv_pct(dist_df, stores_df)
 
         if sppd_df.empty or acv_df.empty:
@@ -572,9 +572,8 @@ def register_callbacks():
             products_df[["sku", "product_name", "product_line"]], on="sku", how="left"
         )
 
-        # Total dollars from scan data.
-        dollars = scan_df.groupby("sku")["dollars_sold"].sum().reset_index()
-        dollars.columns = ["sku", "total_dollars"]
+        # Total dollars already aggregated by SQL.
+        dollars = scan_agg[["sku", "total_dollars"]].copy()
         chart_df = chart_df.merge(dollars, on="sku", how="left")
         chart_df["total_dollars"] = chart_df["total_dollars"].fillna(0)
 
@@ -639,7 +638,7 @@ def register_callbacks():
         indexed_mode = bool(indexed_mode)
 
         try:
-            scan_df = db.get_scan_data(filters)
+            scan_agg = db.get_scan_data_agg(filters)
             dist_df = db.get_distribution(filters)
             stores_df = db.get_stores()
             benchmarks_df = db.get_benchmarks()
@@ -654,7 +653,7 @@ def register_callbacks():
         end_q = filters.get("end_quarter", "Q4 2025")
         days = days_in_quarter_range(start_q, end_q)
 
-        sppd_df = calculate_sppd(scan_df, days)
+        sppd_df = calculate_sppd_from_agg(scan_agg, days)
         acv_df = calculate_acv_pct(dist_df, stores_df)
 
         # Get product info.
@@ -671,8 +670,9 @@ def register_callbacks():
         sku_acv = acv_df[acv_df["sku"] == selected_sku]
         acv_val = sku_acv["acv_pct"].iloc[0] if not sku_acv.empty else 0
 
-        # Total dollars.
-        sku_dollars = scan_df[scan_df["sku"] == selected_sku]["dollars_sold"].sum()
+        # Total dollars from pre-aggregated data.
+        sku_row = scan_agg[scan_agg["sku"] == selected_sku]
+        sku_dollars = float(sku_row["total_dollars"].iloc[0]) if not sku_row.empty else 0
 
         # Quadrant label.
         if not sppd_df.empty and not acv_df.empty:
@@ -692,8 +692,11 @@ def register_callbacks():
         else:
             quadrant = "N/A"
 
-        # Velocity trend.
-        trend_df = calculate_velocity_trend(scan_df, products_df)
+        # Velocity trend from pre-aggregated quarterly SPPD.
+        trend_filters = {k: v for k, v in filters.items()
+                         if k not in ("start_quarter", "end_quarter")}
+        quarterly_sppd_df = db.get_quarterly_sppd(trend_filters)
+        trend_df = calculate_velocity_trend_from_quarterly(quarterly_sppd_df)
         sku_trend = trend_df[trend_df["sku"] == selected_sku]
         trend_label = sku_trend["trend"].iloc[0].capitalize() if not sku_trend.empty else "N/A"
 

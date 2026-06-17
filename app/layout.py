@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 from app import lailara_frame
 from app.app import app
-from app.calculations import calculate_acv_pct, calculate_sppd, classify_quadrant, days_in_quarter_range
+from app.calculations import calculate_acv_pct, calculate_sppd_from_agg, classify_quadrant, days_in_quarter_range
 from app.constants import (
     CHICAGO_20,
     FONT_SANS,
@@ -79,22 +79,26 @@ def _build_narrative_section():
 # ── Protagonist discovery ────────────────────────────────────────
 
 
-def _find_protagonists(scan_df, dist_df, stores_df, products_df, filters=None):
+def _find_protagonists(scan_agg, dist_df, stores_df, products_df, filters=None,
+                       prev_q_agg=None, end_q_agg=None):
     """Find the best exemplar SKU for each quadrant archetype.
 
     Returns a dict with keys: star, hidden_gem, wide_but_dead,
     question_mark, migration. Each value is a dict with sku,
     product_name, sppd, acv_pct, dollars, door_count. Returns
     empty dict if data is insufficient.
+
+    prev_q_agg / end_q_agg: optional per-quarter aggregated scan data
+    for migration protagonist discovery. If omitted, migration is skipped.
     """
-    if scan_df.empty or dist_df.empty or stores_df.empty:
+    if scan_agg.empty or dist_df.empty or stores_df.empty:
         return {}
 
     filters = filters or {}
     start_q = filters.get("start_quarter", "Q1 2025")
     end_q = filters.get("end_quarter", "Q4 2025")
     days = days_in_quarter_range(start_q, end_q)
-    sppd_df = calculate_sppd(scan_df, days)
+    sppd_df = calculate_sppd_from_agg(scan_agg, days)
     acv_df = calculate_acv_pct(dist_df, stores_df)
 
     if sppd_df.empty or acv_df.empty:
@@ -105,8 +109,7 @@ def _find_protagonists(scan_df, dist_df, stores_df, products_df, filters=None):
         products_df[["sku", "product_name"]], on="sku", how="left"
     )
 
-    dollars = scan_df.groupby("sku")["dollars_sold"].sum().reset_index()
-    dollars.columns = ["sku", "dollars"]
+    dollars = scan_agg[["sku", "total_dollars"]].rename(columns={"total_dollars": "dollars"})
     merged = merged.merge(dollars, on="sku", how="left")
     merged["dollars"] = merged["dollars"].fillna(0)
     merged["product_name"] = merged["product_name"].fillna(merged["sku"])
@@ -142,9 +145,12 @@ def _find_protagonists(scan_df, dist_df, stores_df, products_df, filters=None):
 
     # Migration story: find a SKU that actually changed quadrants.
     # Falls back to the star if no real migration found (single-quarter data).
+    end_q = (filters or {}).get("end_quarter", "Q4 2025")
+    prev_q = _prev_quarter(end_q)
     migration_prot = _find_migration_protagonist(
-        scan_df, dist_df, stores_df, products_df, filters,
+        prev_q_agg, end_q_agg, dist_df, stores_df, products_df,
         median_sppd, median_acv,
+        prev_q_label=prev_q, end_q_label=end_q,
     )
     if migration_prot:
         protagonists["migration"] = migration_prot
@@ -187,34 +193,22 @@ def _quarter_date_range(quarter_str):
 _QUADRANT_RANK = {"Stars": 4, "Hidden Gems": 3, "Wide but Dead": 2, "Question Marks": 1}
 
 
-def _find_migration_protagonist(scan_df, dist_df, stores_df, products_df,
-                                 filters, median_sppd, median_acv):
-    """Find a SKU that changed quadrants between two consecutive quarters."""
-    if scan_df.empty or "week_ending" not in scan_df.columns:
+def _find_migration_protagonist(prev_q_agg, end_q_agg, dist_df, stores_df,
+                                 products_df, median_sppd, median_acv,
+                                 prev_q_label="", end_q_label=""):
+    """Find a SKU that changed quadrants between two consecutive quarters.
+
+    Takes per-quarter pre-aggregated scan data to avoid pulling row-level data.
+    Returns None if either quarter's data is missing.
+    """
+    if prev_q_agg is None or end_q_agg is None:
         return None
-
-    end_q = (filters or {}).get("end_quarter", "Q4 2025")
-    prev_q = _prev_quarter(end_q)
-
-    scan_df = scan_df.copy()
-    if not pd.api.types.is_datetime64_any_dtype(scan_df["week_ending"]):
-        scan_df["week_ending"] = pd.to_datetime(scan_df["week_ending"])
-
-    prev_start, prev_end = _quarter_date_range(prev_q)
-    end_start, end_end = _quarter_date_range(end_q)
-    scan_prev = scan_df[
-        (scan_df["week_ending"] >= prev_start) & (scan_df["week_ending"] <= prev_end)
-    ]
-    scan_end = scan_df[
-        (scan_df["week_ending"] >= end_start) & (scan_df["week_ending"] <= end_end)
-    ]
-
-    if scan_prev.empty or scan_end.empty:
+    if prev_q_agg.empty or end_q_agg.empty:
         return None
 
     days_q = 91
-    sppd_prev = calculate_sppd(scan_prev, days_q)
-    sppd_end = calculate_sppd(scan_end, days_q)
+    sppd_prev = calculate_sppd_from_agg(prev_q_agg, days_q)
+    sppd_end = calculate_sppd_from_agg(end_q_agg, days_q)
     acv_df = calculate_acv_pct(dist_df, stores_df)
 
     if sppd_prev.empty or sppd_end.empty or acv_df.empty:
@@ -257,8 +251,8 @@ def _find_migration_protagonist(scan_df, dist_df, stores_df, products_df,
         "acv_pct_p2": float(best["acv_pct_p2"]),
         "quadrant_p1": best["quadrant_p1"],
         "quadrant_p2": best["quadrant_p2"],
-        "q1_label": prev_q,
-        "q2_label": end_q,
+        "q1_label": prev_q_label,
+        "q2_label": end_q_label,
     }
 
 
@@ -450,12 +444,23 @@ def register_layout():
             from app import db
             filters = json.loads(filter_json) if filter_json else {}
 
-            scan_df = db.get_scan_data(filters)
+            scan_agg = db.get_scan_data_agg(filters)
             dist_df = db.get_distribution(filters)
             stores_df = db.get_stores()
             products_df = db.get_products()
 
-            protagonists = _find_protagonists(scan_df, dist_df, stores_df, products_df, filters)
+            # Fetch per-quarter agg data for migration protagonist.
+            end_q = filters.get("end_quarter", "Q4 2025")
+            prev_q = _prev_quarter(end_q)
+            base_filters = {k: v for k, v in filters.items()
+                            if k not in ("start_quarter", "end_quarter")}
+            prev_q_agg = db.get_scan_data_agg({**base_filters, "start_quarter": prev_q, "end_quarter": prev_q})
+            end_q_agg = db.get_scan_data_agg({**base_filters, "start_quarter": end_q, "end_quarter": end_q})
+
+            protagonists = _find_protagonists(
+                scan_agg, dist_df, stores_df, products_df, filters,
+                prev_q_agg=prev_q_agg, end_q_agg=end_q_agg,
+            )
             return _render_narrative(protagonists)
         except Exception:
             logger.exception("Narrative callback failed")

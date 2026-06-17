@@ -65,6 +65,29 @@ def calculate_sppd(scan_df, days_in_period):
     return agg
 
 
+def calculate_sppd_from_agg(agg_df, days_in_period):
+    """Calculate SPPD from pre-aggregated scan data (SQL GROUP BY).
+
+    Parameters
+    ----------
+    agg_df : DataFrame
+        Must contain columns: sku, total_units, door_count.
+    days_in_period : int
+        Number of days in the analysis period.
+
+    Returns
+    -------
+    DataFrame with columns: sku, total_units, door_count, sppd.
+    """
+    if agg_df.empty or days_in_period <= 0:
+        return pd.DataFrame(columns=["sku", "total_units", "door_count", "sppd"])
+
+    result = agg_df[agg_df["door_count"] > 0].copy()
+    result["sppd"] = result["total_units"] / result["door_count"] / days_in_period
+
+    return result[["sku", "total_units", "door_count", "sppd"]]
+
+
 # ── ACV% ────────────────────────────────────────────────────────────
 
 def calculate_acv_pct(dist_df, stores_df):

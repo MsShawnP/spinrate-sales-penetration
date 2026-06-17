@@ -20,7 +20,7 @@ from app.app import app
 from app.calculations import (
     calculate_acv_pct,
     calculate_expansion_upside,
-    calculate_sppd,
+    calculate_sppd_from_agg,
     days_in_quarter_range,
 )
 from app.components import annotation_callout, dark_callout_card
@@ -62,20 +62,20 @@ def build_expansion_data(filters):
     """
     from app import db
 
-    scan_df = db.get_scan_data(filters)
+    scan_agg = db.get_scan_data_agg(filters)
     dist_df = db.get_distribution(filters)
     stores_df = db.get_stores()
     benchmarks_df = db.get_benchmarks()
     products_df = db.get_products()
 
-    if scan_df.empty or dist_df.empty or stores_df.empty:
+    if scan_agg.empty or dist_df.empty or stores_df.empty:
         return pd.DataFrame(), {}
 
     start_q = filters.get("start_quarter", "Q1 2025")
     end_q = filters.get("end_quarter", "Q4 2025")
     days = days_in_quarter_range(start_q, end_q)
 
-    sppd_df = calculate_sppd(scan_df, days)
+    sppd_df = calculate_sppd_from_agg(scan_agg, days)
     acv_df = calculate_acv_pct(dist_df, stores_df)
 
     if sppd_df.empty or acv_df.empty:
@@ -131,9 +131,8 @@ def build_expansion_data(filters):
         acv_df[["sku", "acv_pct"]], on="sku", how="left"
     )
 
-    # Total dollars from scan data.
-    dollars = scan_df.groupby("sku")["dollars_sold"].sum().reset_index()
-    dollars.columns = ["sku", "current_dollars"]
+    # Total dollars already aggregated by SQL.
+    dollars = scan_agg[["sku", "total_dollars"]].rename(columns={"total_dollars": "current_dollars"})
     upside_df = upside_df.merge(dollars, on="sku", how="left")
     upside_df["current_dollars"] = upside_df["current_dollars"].fillna(0)
 

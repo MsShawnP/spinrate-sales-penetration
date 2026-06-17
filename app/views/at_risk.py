@@ -19,7 +19,7 @@ from app.app import app
 from app.calculations import (
     calculate_at_risk_score,
     calculate_indexed_sppd,
-    calculate_sppd,
+    calculate_sppd_from_agg,
     calculate_velocity_trend_from_quarterly,
     days_in_quarter_range,
 )
@@ -91,19 +91,19 @@ def build_at_risk_data(filters):
     """
     from app import db
 
-    scan_df = db.get_scan_data(filters)
+    scan_agg = db.get_scan_data_agg(filters)
     stores_df = db.get_stores()
     benchmarks_df = db.get_benchmarks()
     products_df = db.get_products()
 
-    if scan_df.empty or stores_df.empty:
+    if scan_agg.empty or stores_df.empty:
         return pd.DataFrame(), pd.DataFrame(), {}
 
     start_q = filters.get("start_quarter", "Q1 2025")
     end_q = filters.get("end_quarter", "Q4 2025")
     days = days_in_quarter_range(start_q, end_q)
 
-    sppd_df = calculate_sppd(scan_df, days)
+    sppd_df = calculate_sppd_from_agg(scan_agg, days)
     if sppd_df.empty:
         return pd.DataFrame(), pd.DataFrame(), {}
 
@@ -139,9 +139,8 @@ def build_at_risk_data(filters):
         trend_df[["sku", "slope", "mean_sppd", "quarters_with_data"]], on="sku", how="left"
     )
 
-    # Total dollars from scan data.
-    dollars = scan_df.groupby("sku")["dollars_sold"].sum().reset_index()
-    dollars.columns = ["sku", "current_dollars"]
+    # Total dollars already aggregated by SQL.
+    dollars = scan_agg[["sku", "total_dollars"]].rename(columns={"total_dollars": "current_dollars"})
     scored = scored.merge(dollars, on="sku", how="left")
     scored["current_dollars"] = scored["current_dollars"].fillna(0)
 

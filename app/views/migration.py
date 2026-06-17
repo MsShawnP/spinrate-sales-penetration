@@ -16,7 +16,7 @@ import plotly.graph_objects as go
 logger = logging.getLogger(__name__)
 
 from app.app import app
-from app.calculations import calculate_acv_pct, calculate_sppd, classify_quadrant, days_in_quarter_range
+from app.calculations import calculate_acv_pct, calculate_sppd_from_agg, classify_quadrant, days_in_quarter_range
 from app.charts import CHART_CONFIG, economist_layout
 from app.components import dark_callout_card
 from app.constants import (
@@ -117,7 +117,7 @@ def _get_default_qoq_quarters(filter_state):
 
 
 
-def _compute_period_metrics(scan_df, dist_df, stores_df, products_df, quarter):
+def _compute_period_metrics(scan_agg, dist_df, stores_df, products_df, quarter):
     """Compute SPPD, ACV%, and quadrant for a single quarter.
 
     Returns a DataFrame with columns: sku, sppd, acv_pct, quadrant,
@@ -125,7 +125,7 @@ def _compute_period_metrics(scan_df, dist_df, stores_df, products_df, quarter):
     Returns empty DataFrame if no data.
     """
     days = days_in_quarter_range(quarter, quarter)
-    sppd_df = calculate_sppd(scan_df, days)
+    sppd_df = calculate_sppd_from_agg(scan_agg, days)
     acv_df = calculate_acv_pct(dist_df, stores_df)
 
     if sppd_df.empty or acv_df.empty:
@@ -139,9 +139,8 @@ def _compute_period_metrics(scan_df, dist_df, stores_df, products_df, quarter):
         products_df[["sku", "product_name", "product_line"]], on="sku", how="left"
     )
 
-    # Total dollars from scan data.
-    dollars = scan_df.groupby("sku")["dollars_sold"].sum().reset_index()
-    dollars.columns = ["sku", "total_dollars"]
+    # Total dollars already aggregated by SQL.
+    dollars = scan_agg[["sku", "total_dollars"]].copy()
     merged = merged.merge(dollars, on="sku", how="left")
     merged["total_dollars"] = merged["total_dollars"].fillna(0)
 
@@ -1006,12 +1005,12 @@ def register_callbacks():
         try:
             # Period 1 filters.
             p1_filters = {**filters, "start_quarter": q1_label, "end_quarter": q1_label}
-            p1_scan = db.get_scan_data(p1_filters)
+            p1_scan_agg = db.get_scan_data_agg(p1_filters)
             p1_dist = db.get_distribution(p1_filters)
 
             # Period 2 filters.
             p2_filters = {**filters, "start_quarter": q2_label, "end_quarter": q2_label}
-            p2_scan = db.get_scan_data(p2_filters)
+            p2_scan_agg = db.get_scan_data_agg(p2_filters)
             p2_dist = db.get_distribution(p2_filters)
 
             stores_df = db.get_stores()
@@ -1020,8 +1019,8 @@ def register_callbacks():
             logger.exception("Migration chart callback failed")
             return _build_no_migration_figure(), []
 
-        p1_metrics = _compute_period_metrics(p1_scan, p1_dist, stores_df, products_df, q1_label)
-        p2_metrics = _compute_period_metrics(p2_scan, p2_dist, stores_df, products_df, q2_label)
+        p1_metrics = _compute_period_metrics(p1_scan_agg, p1_dist, stores_df, products_df, q1_label)
+        p2_metrics = _compute_period_metrics(p2_scan_agg, p2_dist, stores_df, products_df, q2_label)
 
         migration_df = _build_migration_df(p1_metrics, p2_metrics)
 
@@ -1069,11 +1068,11 @@ def register_callbacks():
 
         try:
             p1_filters = {**filters, "start_quarter": q1_label, "end_quarter": q1_label}
-            p1_scan = db.get_scan_data(p1_filters)
+            p1_scan_agg = db.get_scan_data_agg(p1_filters)
             p1_dist = db.get_distribution(p1_filters)
 
             p2_filters = {**filters, "start_quarter": q2_label, "end_quarter": q2_label}
-            p2_scan = db.get_scan_data(p2_filters)
+            p2_scan_agg = db.get_scan_data_agg(p2_filters)
             p2_dist = db.get_distribution(p2_filters)
 
             stores_df = db.get_stores()
@@ -1084,8 +1083,8 @@ def register_callbacks():
                 "color": TEXT_SECONDARY, "fontFamily": FONT_SANS, "fontSize": "14px",
             })
 
-        p1_metrics = _compute_period_metrics(p1_scan, p1_dist, stores_df, products_df, q1_label)
-        p2_metrics = _compute_period_metrics(p2_scan, p2_dist, stores_df, products_df, q2_label)
+        p1_metrics = _compute_period_metrics(p1_scan_agg, p1_dist, stores_df, products_df, q1_label)
+        p2_metrics = _compute_period_metrics(p2_scan_agg, p2_dist, stores_df, products_df, q2_label)
 
         p1_row = p1_metrics[p1_metrics["sku"] == selected_sku]
         p2_row = p2_metrics[p2_metrics["sku"] == selected_sku]

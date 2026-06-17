@@ -9,6 +9,17 @@ import plotly.graph_objects as go
 import pytest
 
 from app.calculations import calculate_acv_pct, calculate_sppd, classify_quadrant, days_in_quarter_range
+
+
+def _agg_scan(scan_df):
+    """Aggregate raw scan fixture to match get_scan_data_agg() output."""
+    if scan_df.empty:
+        return pd.DataFrame(columns=["sku", "total_units", "total_dollars", "door_count"])
+    return scan_df.groupby("sku").agg(
+        total_units=("units_sold", "sum"),
+        total_dollars=("dollars_sold", "sum"),
+        door_count=("store_id", "nunique"),
+    ).reset_index()
 from app.constants import (
     MIGRATION_FAVORABLE,
     MIGRATION_UNFAVORABLE,
@@ -117,10 +128,10 @@ def two_period_metrics(
 ):
     """Compute period metrics for both periods and return migration_df."""
     p1 = _compute_period_metrics(
-        period1_scan_df, sample_dist_df, sample_stores_df, sample_products_df, "Q3 2025"
+        _agg_scan(period1_scan_df), sample_dist_df, sample_stores_df, sample_products_df, "Q3 2025"
     )
     p2 = _compute_period_metrics(
-        period2_scan_df, sample_dist_df, sample_stores_df, sample_products_df, "Q4 2025"
+        _agg_scan(period2_scan_df), sample_dist_df, sample_stores_df, sample_products_df, "Q4 2025"
     )
     return p1, p2, _build_migration_df(p1, p2)
 
@@ -176,7 +187,7 @@ class TestComputePeriodMetrics:
     ):
         """Period metrics should contain all required columns."""
         result = _compute_period_metrics(
-            sample_scan_df, sample_dist_df, sample_stores_df, sample_products_df, "Q1 2025"
+            _agg_scan(sample_scan_df), sample_dist_df, sample_stores_df, sample_products_df, "Q1 2025"
         )
         expected_cols = {"sku", "sppd", "acv_pct", "quadrant",
                          "product_name", "product_line", "total_dollars", "door_count"}
@@ -187,7 +198,7 @@ class TestComputePeriodMetrics:
     ):
         """All SKUs present in both scan and dist data should appear."""
         result = _compute_period_metrics(
-            sample_scan_df, sample_dist_df, sample_stores_df, sample_products_df, "Q1 2025"
+            _agg_scan(sample_scan_df), sample_dist_df, sample_stores_df, sample_products_df, "Q1 2025"
         )
         assert len(result) == 3
 
@@ -195,7 +206,7 @@ class TestComputePeriodMetrics:
         self, sample_dist_df, sample_stores_df, sample_products_df,
     ):
         """Empty scan data should return empty DataFrame."""
-        empty_scan = pd.DataFrame(columns=["sku", "store_id", "week_ending", "units_sold", "dollars_sold"])
+        empty_scan = pd.DataFrame(columns=["sku", "total_units", "total_dollars", "door_count"])
         result = _compute_period_metrics(
             empty_scan, sample_dist_df, sample_stores_df, sample_products_df, "Q1 2025"
         )
@@ -460,10 +471,10 @@ class TestMigrationDetailCard:
         from app.constants import fmt_pct, fmt_dollars
 
         p1 = _compute_period_metrics(
-            period1_scan_df, sample_dist_df, sample_stores_df, sample_products_df, "Q3 2025"
+            _agg_scan(period1_scan_df), sample_dist_df, sample_stores_df, sample_products_df, "Q3 2025"
         )
         p2 = _compute_period_metrics(
-            period2_scan_df, sample_dist_df, sample_stores_df, sample_products_df, "Q4 2025"
+            _agg_scan(period2_scan_df), sample_dist_df, sample_stores_df, sample_products_df, "Q4 2025"
         )
 
         sku = "CHP-AS-001"
