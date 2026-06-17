@@ -1,30 +1,22 @@
 # Handoff — Spinrate Sales Penetration
 
-## 2026-06-17 (session 9 — UX pass round 2 + performance profiling)
+## 2026-06-17 (session 10 — Performance Fix D)
 
-**Started from:** 6 new UX issues from production review. #1 interactive quadrant summary, #2 dead "Explore" label, #3 migration gray dots, #4 expansion slow, #5 at-risk slow, #6 expansion hero cards.
+**Started from:** Profiling showed `get_scan_data` pulling 465K rows from fct_scan_data (4.6s cold). User picked Fix D: SQL aggregation.
 
-**Did:** Fixed #1 (quadrant summary counts now clickable `<details>` that expand to show all items per quadrant), #2 (removed "Explore the full dataset below" dead label from narrative), #3 (replaced gray DISABLED/REFERENCE dots with on-palette HK teal and Chicago blue across arrow overlay, side-by-side, and sankey), #6 (expansion benchmark chips → hero cards with 28px serif dollar figures, white bg, bordered). Profiled #4/#5 in production via fly ssh.
+**Did:** Audited all 7 callers of `get_scan_data`. Added `get_scan_data_agg()` to db.py — pushes `GROUP BY sku` into Postgres, returns ~50 rows. Switched all callers: at_risk, expansion, quadrant (×2), migration (×2), layout narrative. Two secondary needs solved without raw scan data: velocity trend uses `get_quarterly_sppd` (~600 rows), migration protagonist takes per-quarter agg params instead of calling DB directly. Added `calculate_sppd_from_agg()` to calculations.py. Updated all 6 test files. Original `get_scan_data()` preserved.
 
-**Profiling results (production):**
-- Cold cache: Expansion 4.7s, At-Risk 7.4s (first visitor after machine restart)
-- Warm cache: both 0.23s
-- Bottleneck 1: `get_scan_data` pulls 465K rows from fct_scan_data (4.6s)
-- Bottleneck 2: `get_quarterly_sppd` GROUP BY over same 465K rows (7.4s, only returns 600 rows)
-- Python computation is < 0.2s total — problem is entirely SQL I/O
-
-**Fix options identified (not implemented — user to pick):**
-1. Preload cache at startup (warmest win, ~12s startup cost)
-2. Database indexes on fct_scan_data(week_ending) and (sku, store_id, week_ending)
-3. Pre-aggregate quarterly SPPD as a dbt materialized model
-4. SQL-aggregate scan_data (pull ~50 rows instead of 465K)
-
-**State:** Code changes deployed to production. 145 tests passing. Changes NOT yet committed to git. Files modified: quadrant.py, layout.py, migration.py, expansion.py, style.css, tests/test_narrative.py.
+**State:** Committed (`42cef4b`). 145 tests passing. Not yet deployed to production.
 
 **Next:**
-1. Commit changes
-2. User picks performance fix direction for #4/#5
-3. Run `/ce:compound`
+1. Deploy to production (`fly deploy`)
+2. Run `/ce:compound`
+
+## 2026-06-17 (session 9 — UX pass round 2 + performance profiling)
+
+**Started from:** 6 new UX issues from production review.
+
+**Did:** Fixed #1–#3, #6. Profiled #4/#5 in production — bottleneck is SQL I/O (465K rows). Identified 4 fix options. UX changes committed (`61674ce`), performance fix deferred to session 10.
 
 ## 2026-06-17 (session 8 — UX pass: filters, narrative, tooltips, tables)
 

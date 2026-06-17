@@ -1,7 +1,7 @@
 # Plan — Spinrate Sales Penetration
 
 **Tier:** Heavy
-**Status:** UX pass rounds 1+2 deployed. Performance profiled — user to pick fix direction. 145 tests, compound pass pending
+**Status:** Performance Fix D deployed. 145 tests. Compound pass pending.
 
 ## Goal (2026-06-15)
 
@@ -9,7 +9,7 @@ Interactive penetration × velocity quadrant dashboard for the Lailara portfolio
 
 ## Focus
 
-UX rounds 1+2 deployed. Pick perf fix, commit, then `/ce:compound`.
+Performance Fix D committed. Deploy and `/ce:compound`.
 
 ## Tasks
 
@@ -32,6 +32,7 @@ UX rounds 1+2 deployed. Pick perf fix, commit, then `/ce:compound`.
 - [x] UX pass round 2 — interactive summary, dead label, migration colors, hero cards (#1–#3, #6)
 - [x] Deploy UX pass rounds 1+2 to production
 - [x] Profile expansion + at-risk callbacks in production (#4, #5)
-- [ ] Fix cold-cache performance (user to pick direction: preload, indexes, dbt, or SQL-agg)
-- [ ] Commit UX round 2 changes
+- [x] Fix cold-cache performance — Fix D: SQL aggregation (465K rows → ~50)
+- [x] Commit UX round 2 changes
+- [ ] Deploy performance fix to production
 - [ ] `/ce:compound`
