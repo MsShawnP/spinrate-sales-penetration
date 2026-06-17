@@ -337,6 +337,38 @@
     }
 }
 
+/* ── Quadrant summary buckets ── */
+
+.quadrant-summary-bucket {
+    margin-bottom: 2px;
+}
+
+.quadrant-summary-toggle {
+    font-family: var(--ll-sans);
+    font-size: 14px;
+    color: var(--ll-london-5);
+    cursor: pointer;
+    padding: 6px 0;
+    list-style: none;
+}
+
+.quadrant-summary-toggle::-webkit-details-marker {
+    display: none;
+}
+
+.quadrant-summary-toggle::before {
+    content: '▸ ';
+    color: var(--ll-london-35);
+}
+
+.quadrant-summary-bucket[open] > .quadrant-summary-toggle::before {
+    content: '▾ ';
+}
+
+.quadrant-summary-toggle:hover {
+    color: var(--ll-chicago-20);
+}
+
 /* ── Quadrant view (U3) ── */
 
 /* Quadrant detail card container */

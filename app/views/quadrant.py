@@ -311,7 +311,7 @@ def _build_empty_figure():
 
 
 def _build_quadrant_summary(chart_df):
-    """Build a summary line below the chart showing counts and top items per quadrant."""
+    """Build interactive summary — click a quadrant count to expand its item list."""
     if chart_df.empty:
         return []
 
@@ -322,42 +322,88 @@ def _build_quadrant_summary(chart_df):
         ("question_mark", "question marks"),
     ]
 
-    parts = []
+    sections = []
     for key, label in quadrant_order:
         q_label = QUADRANT_LABELS[key]
-        subset = chart_df[chart_df["quadrant"] == q_label]
+        subset = chart_df[chart_df["quadrant"] == q_label].sort_values(
+            "total_dollars", ascending=False
+        )
         count = len(subset)
-        if count > 0:
-            top = subset.nlargest(1, "total_dollars").iloc[0]
-            parts.append(
-                html.Span(
+
+        if count == 0:
+            sections.append(
+                html.Div(
+                    [html.Strong("0"), f" {label}"],
+                    style={
+                        "fontFamily": FONT_SANS,
+                        "fontSize": "14px",
+                        "color": DISABLED,
+                        "padding": "6px 0",
+                    },
+                )
+            )
+            continue
+
+        top = subset.iloc[0]
+
+        item_list = []
+        for _, row in subset.iterrows():
+            item_list.append(
+                html.Div(
                     [
-                        html.Strong(f"{count}"),
-                        f" {label}",
                         html.Span(
-                            f" (top: {top['product_name']})",
+                            row["product_name"],
+                            style={"fontWeight": "600", "color": INK},
+                        ),
+                        html.Span(
+                            f"  {fmt_dollars(row['total_dollars'])}  ·  "
+                            f"{row['sppd']:.4f} SPPD  ·  {row['acv_pct']:.1%} ACV%",
                             style={"color": TEXT_SECONDARY},
                         ),
                     ],
+                    style={
+                        "padding": "4px 0",
+                        "borderBottom": f"1px solid {GRIDLINE}",
+                        "fontFamily": FONT_SANS,
+                        "fontSize": "13px",
+                    },
                 )
             )
-        else:
-            parts.append(html.Span([html.Strong("0"), f" {label}"]))
 
-    children = []
-    for i, part in enumerate(parts):
-        if i > 0:
-            children.append(html.Span(" · ", style={"color": DISABLED, "margin": "0 4px"}))
-        children.append(part)
+        sections.append(
+            html.Details(
+                [
+                    html.Summary(
+                        [
+                            html.Strong(f"{count}"),
+                            f" {label}",
+                            html.Span(
+                                f" (top: {top['product_name']})",
+                                style={"color": TEXT_SECONDARY},
+                            ),
+                        ],
+                        className="quadrant-summary-toggle",
+                    ),
+                    html.Div(
+                        item_list,
+                        style={
+                            "padding": "8px 0 8px 16px",
+                            "maxHeight": "300px",
+                            "overflowY": "auto",
+                        },
+                    ),
+                ],
+                className="quadrant-summary-bucket",
+            )
+        )
 
     return html.Div(
-        children,
+        sections,
         style={
             "fontFamily": FONT_SANS,
             "fontSize": "14px",
             "color": INK,
             "padding": "12px 0",
-            "lineHeight": "1.6",
         },
     )
 

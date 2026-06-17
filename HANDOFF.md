@@ -1,5 +1,49 @@
 # Handoff — Spinrate Sales Penetration
 
+## 2026-06-17 (session 9 — UX pass round 2 + performance profiling)
+
+**Started from:** 6 new UX issues from production review. #1 interactive quadrant summary, #2 dead "Explore" label, #3 migration gray dots, #4 expansion slow, #5 at-risk slow, #6 expansion hero cards.
+
+**Did:** Fixed #1 (quadrant summary counts now clickable `<details>` that expand to show all items per quadrant), #2 (removed "Explore the full dataset below" dead label from narrative), #3 (replaced gray DISABLED/REFERENCE dots with on-palette HK teal and Chicago blue across arrow overlay, side-by-side, and sankey), #6 (expansion benchmark chips → hero cards with 28px serif dollar figures, white bg, bordered). Profiled #4/#5 in production via fly ssh.
+
+**Profiling results (production):**
+- Cold cache: Expansion 4.7s, At-Risk 7.4s (first visitor after machine restart)
+- Warm cache: both 0.23s
+- Bottleneck 1: `get_scan_data` pulls 465K rows from fct_scan_data (4.6s)
+- Bottleneck 2: `get_quarterly_sppd` GROUP BY over same 465K rows (7.4s, only returns 600 rows)
+- Python computation is < 0.2s total — problem is entirely SQL I/O
+
+**Fix options identified (not implemented — user to pick):**
+1. Preload cache at startup (warmest win, ~12s startup cost)
+2. Database indexes on fct_scan_data(week_ending) and (sku, store_id, week_ending)
+3. Pre-aggregate quarterly SPPD as a dbt materialized model
+4. SQL-aggregate scan_data (pull ~50 rows instead of 465K)
+
+**State:** Code changes deployed to production. 145 tests passing. Changes NOT yet committed to git. Files modified: quadrant.py, layout.py, migration.py, expansion.py, style.css, tests/test_narrative.py.
+
+**Next:**
+1. Commit changes
+2. User picks performance fix direction for #4/#5
+3. Run `/ce:compound`
+
+## 2026-06-17 (session 8 — UX pass: filters, narrative, tooltips, tables)
+
+**Started from:** 7 UX issues prioritized by user. #1 dead filter dropdowns, #2 narrative above fold, #3 chart tooltips, #4 summary callouts, #5 table overflow, #6 at-risk profiling, #7 migration gray dots (upstream).
+
+**Did:** Fixed #1–#5 in one commit (`a76243a`). Wired Retailer/Region dropdowns to dim_stores. Collapsed narrative into `<details>` below tabs. Added pre-formatted hover tooltips to all quadrant (2) and migration (8) traces — used `hovertext`+`hoverinfo="text"` instead of `hovertemplate` because `np.stack` coerces mixed-type customdata to strings. Added quadrant count summary with top item per quadrant. Removed Guidance column from expansion grid, Product Line from at-risk grid; tightened widths to eliminate horizontal scroll. 146 tests passing.
+
+**State:** Committed on main. Not yet deployed. Local Postgres was not running so no browser verification this session.
+
+**Not done:**
+- **#6 At-risk profiling** — user explicitly said to profile in production before fixing. Needs running Postgres to time the actual callback (query, scoring, rendering).
+- **#7 Migration gray dots** — upstream blocker in cinderhaven-data-platform, no spinrate action.
+- `/ce:compound` still pending.
+
+**Next:**
+1. Deploy `a76243a` to production (`fly deploy`)
+2. Profile at-risk callback in production — time query, scoring, rendering separately
+3. Run `/ce:compound`
+
 ## 2026-06-17 (session 7 — production bug fixes: OOM, legend, headers)
 
 **Started from:** Four production issues: legend/title collision, migration zero movers, expansion headers truncated, at-risk OOM crash.

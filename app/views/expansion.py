@@ -25,6 +25,7 @@ from app.calculations import (
 )
 from app.components import annotation_callout, dark_callout_card
 from app.constants import (
+    CANVAS,
     CHICAGO_20,
     FONT_SANS,
     FONT_SERIF,
@@ -379,9 +380,9 @@ def register_callbacks():
                 ),
                 html.Div(
                     [
-                        _upside_chip("Median benchmark", summary["total_median_upside"]),
-                        _upside_chip("75th percentile", summary["total_p75_upside"]),
-                        _upside_chip("Category leader", summary["total_leader_upside"]),
+                        _upside_hero_card("Median benchmark", summary["total_median_upside"]),
+                        _upside_hero_card("75th percentile", summary["total_p75_upside"]),
+                        _upside_hero_card("Category leader", summary["total_leader_upside"]),
                     ],
                     style={
                         "display": "flex",
@@ -473,29 +474,42 @@ def register_callbacks():
         )
 
 
-def _upside_chip(label, value):
-    """Render a small summary chip showing a benchmark's total upside."""
+def _upside_hero_card(label, value):
+    """Render a hero card for a benchmark's total upside."""
     return html.Div(
         [
-            html.Span(
-                label,
-                style={
-                    "fontFamily": FONT_SANS,
-                    "fontSize": "12px",
-                    "color": TEXT_SECONDARY,
-                    "display": "block",
-                },
-            ),
             html.Span(
                 fmt_dollars(value),
                 style={
                     "fontFamily": FONT_SERIF,
-                    "fontSize": "22px",
+                    "fontSize": "28px",
                     "fontWeight": "700",
                     "color": INK,
+                    "letterSpacing": "-0.02em",
+                    "display": "block",
+                    "lineHeight": "1.2",
+                },
+            ),
+            html.Span(
+                label,
+                style={
+                    "fontFamily": FONT_SANS,
+                    "fontSize": "13px",
+                    "fontWeight": "600",
+                    "color": TEXT_SECONDARY,
+                    "display": "block",
+                    "marginTop": "6px",
                 },
             ),
         ],
+        style={
+            "background": WHITE,
+            "border": f"1px solid {GRIDLINE}",
+            "borderRadius": "2px",
+            "padding": "20px 24px",
+            "minWidth": "180px",
+            "flex": "1",
+        },
     )
 
 

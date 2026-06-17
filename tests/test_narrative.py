@@ -221,7 +221,7 @@ class TestRenderNarrative:
         # "units per store per day" explains SPPD in context.
         assert "units per store per day" in text
 
-    def test_narrative_ends_with_transition(
+    def test_narrative_ends_with_protagonist(
         self, narrative_scan_df, narrative_dist_df, sample_stores_df, narrative_products_df
     ):
         protagonists = _find_protagonists(
@@ -229,17 +229,12 @@ class TestRenderNarrative:
         )
         result = _render_narrative(protagonists)
         text = _extract_text(result)
-        assert "Explore the full dataset below" in text
+        assert "migration" in text.lower() or "mover" in text.lower()
 
     def test_fallback_when_no_protagonists(self):
         result = _render_narrative({})
         text = _extract_text(result)
         assert "shelf space" in text.lower()
-
-    def test_fallback_narrative_has_transition(self):
-        result = _fallback_narrative()
-        text = _extract_text(result)
-        assert "Explore the full dataset below" in text
 
 
 # ── Helpers ──────────────────────────────────────────────────────

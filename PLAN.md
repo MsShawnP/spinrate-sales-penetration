@@ -1,7 +1,7 @@
 # Plan — Spinrate Sales Penetration
 
 **Tier:** Heavy
-**Status:** Deployed to spinrate.lailarallc.com — production bugs fixed (OOM, legend, headers), 146 tests, compound pass pending
+**Status:** UX pass rounds 1+2 deployed. Performance profiled — user to pick fix direction. 145 tests, compound pass pending
 
 ## Goal (2026-06-15)
 
@@ -9,7 +9,7 @@ Interactive penetration × velocity quadrant dashboard for the Lailara portfolio
 
 ## Focus
 
-All 8 units complete, code reviewed, production bugs fixed, 146 tests passing. Next: `/ce:compound`.
+UX rounds 1+2 deployed. Pick perf fix, commit, then `/ce:compound`.
 
 ## Tasks
 
@@ -28,4 +28,10 @@ All 8 units complete, code reviewed, production bugs fixed, 146 tests passing. N
 - [x] `/ce:work` — U8: Deployment + subdomain
 - [x] Deploy to Fly.io + DNS
 - [x] `/ce:review` — 11-agent review, 22 findings fixed, 2 runtime bugs fixed
+- [x] UX pass round 1 — filters, narrative, tooltips, summaries, table overflow (#1–#5)
+- [x] UX pass round 2 — interactive summary, dead label, migration colors, hero cards (#1–#3, #6)
+- [x] Deploy UX pass rounds 1+2 to production
+- [x] Profile expansion + at-risk callbacks in production (#4, #5)
+- [ ] Fix cold-cache performance (user to pick direction: preload, indexes, dbt, or SQL-agg)
+- [ ] Commit UX round 2 changes
 - [ ] `/ce:compound`

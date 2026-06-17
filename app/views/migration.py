@@ -22,11 +22,13 @@ from app.components import dark_callout_card
 from app.constants import (
     CANVAS,
     CHICAGO_20,
+    CHICAGO_70,
     DISABLED,
     FONT_SANS,
     FONT_SERIF,
     GRIDLINE,
     HK_35,
+    HK_70,
     HK_85,
     INK,
     MIGRATION_FAVORABLE,
@@ -67,7 +69,7 @@ _SANKEY_ORDER = [
 ]
 
 # Sankey node colors.
-_SANKEY_COLORS = [HK_35, HK_85, TOKYO_70, DISABLED]
+_SANKEY_COLORS = [HK_35, HK_85, TOKYO_70, CHICAGO_70]
 
 
 def _migration_hover(df, sku_col, name_col, quadrant_col, sppd_col, acv_col, dollars_col):
@@ -291,9 +293,9 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
         ], axis=-1).tolist() if not migration_df.empty else None,
         marker=dict(
             size=10,
-            color=DISABLED,
-            opacity=0.3,
-            line=dict(width=1, color=REFERENCE),
+            color=HK_85,
+            opacity=0.4,
+            line=dict(width=1, color=HK_70),
         ),
         hovertext=_migration_hover(migration_df, "sku", "product_name_p1", "quadrant_p1", "sppd_p1", "acv_pct_p1", "total_dollars_p1"),
         hoverinfo="text",
@@ -317,9 +319,9 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
             ], axis=-1).tolist(),
             marker=dict(
                 size=10,
-                color=REFERENCE,
+                color=HK_70,
                 opacity=0.7,
-                line=dict(width=1, color=INK),
+                line=dict(width=1, color=HK_35),
             ),
             hovertext=_migration_hover(stayers, "sku", "product_name_p2", "quadrant_p2", "sppd_p2", "acv_pct_p2", "total_dollars_p2"),
             hoverinfo="text",
@@ -398,9 +400,9 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
             ], axis=-1).tolist(),
             marker=dict(
                 size=12,
-                color=REFERENCE,
+                color=CHICAGO_70,
                 opacity=1.0,
-                line=dict(width=1, color=INK),
+                line=dict(width=1, color=CHICAGO_20),
             ),
             hovertext=_migration_hover(lateral, "sku", "product_name_p2", "quadrant_p2", "sppd_p2", "acv_pct_p2", "total_dollars_p2"),
             hoverinfo="text",
@@ -412,7 +414,7 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
     for _, row in top_movers.iterrows():
         color = MIGRATION_FAVORABLE if row["rank_delta"] > 0 else MIGRATION_UNFAVORABLE
         if row["rank_delta"] == 0:
-            color = REFERENCE
+            color = CHICAGO_70
         arrow_annotations.append(dict(
             x=row["acv_pct_p2"],
             y=row["sppd_p2"],
@@ -498,8 +500,8 @@ def build_side_by_side(migration_df, q1_label, q2_label):
         QUADRANT_LABELS["star"]: MIGRATION_FAVORABLE,
         QUADRANT_LABELS["hidden_gem"]: HK_85,
         QUADRANT_LABELS["wide_but_dead"]: TOKYO_70,
-        QUADRANT_LABELS["question_mark"]: DISABLED,
-    }).fillna(DISABLED)
+        QUADRANT_LABELS["question_mark"]: CHICAGO_70,
+    }).fillna(CHICAGO_70)
 
     fig.add_trace(go.Scatter(
         x=migration_df["acv_pct_p1"].tolist(),
@@ -528,8 +530,8 @@ def build_side_by_side(migration_df, q1_label, q2_label):
         QUADRANT_LABELS["star"]: MIGRATION_FAVORABLE,
         QUADRANT_LABELS["hidden_gem"]: HK_85,
         QUADRANT_LABELS["wide_but_dead"]: TOKYO_70,
-        QUADRANT_LABELS["question_mark"]: DISABLED,
-    }).fillna(DISABLED)
+        QUADRANT_LABELS["question_mark"]: CHICAGO_70,
+    }).fillna(CHICAGO_70)
 
     fig.add_trace(go.Scatter(
         x=migration_df["acv_pct_p2"].tolist(),

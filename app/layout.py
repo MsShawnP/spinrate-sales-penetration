@@ -368,13 +368,6 @@ def _render_narrative(protagonists):
                 )
             )
 
-    children.append(
-        html.P(
-            "Explore the full dataset below.",
-            className="narrative-transition",
-        ),
-    )
-
     return html.Div(children, className="narrative-content")
 
 
@@ -404,10 +397,6 @@ def _fallback_narrative():
                 "and which are quietly fading. Select filters above and explore "
                 "the interactive views below.",
                 className="narrative-body",
-            ),
-            html.P(
-                "Explore the full dataset below.",
-                className="narrative-transition",
             ),
         ],
         className="narrative-content",
