@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 from app import lailara_frame
 from app.app import app
-from app.calculations import calculate_acv_pct, calculate_sppd, days_in_quarter_range
+from app.calculations import calculate_acv_pct, calculate_sppd, classify_quadrant, days_in_quarter_range
 from app.constants import (
     CHICAGO_20,
     FONT_SANS,
@@ -131,8 +131,15 @@ def _find_protagonists(scan_df, dist_df, stores_df, products_df, filters=None):
         best = questions.sort_values("dollars", ascending=True).iloc[0]
         protagonists["question_mark"] = _row_to_dict(best)
 
-    # Migration story: pick the star (most likely to have an interesting story).
-    if "star" in protagonists:
+    # Migration story: find a SKU that actually changed quadrants.
+    # Falls back to the star if no real migration found (single-quarter data).
+    migration_prot = _find_migration_protagonist(
+        scan_df, dist_df, stores_df, products_df, filters,
+        median_sppd, median_acv,
+    )
+    if migration_prot:
+        protagonists["migration"] = migration_prot
+    elif "star" in protagonists:
         protagonists["migration"] = protagonists["star"].copy()
 
     return protagonists
@@ -146,6 +153,103 @@ def _row_to_dict(row):
         "acv_pct": float(row["acv_pct"]),
         "dollars": float(row["dollars"]),
         "door_count": int(row["door_count"]),
+    }
+
+
+def _prev_quarter(quarter_str):
+    """Return the quarter before the given one, e.g. 'Q4 2025' -> 'Q3 2025'."""
+    q, year = quarter_str.split()
+    q_num = int(q[1])
+    if q_num == 1:
+        return f"Q4 {int(year) - 1}"
+    return f"Q{q_num - 1} {year}"
+
+
+def _quarter_date_range(quarter_str):
+    """Return (start_date, end_date) strings for a single quarter."""
+    q, year = quarter_str.split()
+    q_num = int(q[1])
+    start_month = (q_num - 1) * 3 + 1
+    end_month = q_num * 3
+    end_day = 31 if end_month in (3, 12) else 30
+    return (f"{year}-{start_month:02d}-01", f"{year}-{end_month:02d}-{end_day:02d}")
+
+
+_QUADRANT_RANK = {"Stars": 4, "Hidden Gems": 3, "Wide but Dead": 2, "Question Marks": 1}
+
+
+def _find_migration_protagonist(scan_df, dist_df, stores_df, products_df,
+                                 filters, median_sppd, median_acv):
+    """Find a SKU that changed quadrants between two consecutive quarters."""
+    if scan_df.empty or "week_ending" not in scan_df.columns:
+        return None
+
+    end_q = (filters or {}).get("end_quarter", "Q4 2025")
+    prev_q = _prev_quarter(end_q)
+
+    scan_df = scan_df.copy()
+    if not pd.api.types.is_datetime64_any_dtype(scan_df["week_ending"]):
+        scan_df["week_ending"] = pd.to_datetime(scan_df["week_ending"])
+
+    prev_start, prev_end = _quarter_date_range(prev_q)
+    end_start, end_end = _quarter_date_range(end_q)
+    scan_prev = scan_df[
+        (scan_df["week_ending"] >= prev_start) & (scan_df["week_ending"] <= prev_end)
+    ]
+    scan_end = scan_df[
+        (scan_df["week_ending"] >= end_start) & (scan_df["week_ending"] <= end_end)
+    ]
+
+    if scan_prev.empty or scan_end.empty:
+        return None
+
+    days_q = 91
+    sppd_prev = calculate_sppd(scan_prev, days_q)
+    sppd_end = calculate_sppd(scan_end, days_q)
+    acv_df = calculate_acv_pct(dist_df, stores_df)
+
+    if sppd_prev.empty or sppd_end.empty or acv_df.empty:
+        return None
+
+    prev_m = sppd_prev.merge(acv_df[["sku", "acv_pct"]], on="sku", how="inner")
+    end_m = sppd_end.merge(acv_df[["sku", "acv_pct"]], on="sku", how="inner")
+
+    prev_m["quadrant"] = prev_m.apply(
+        lambda r: classify_quadrant(r["sppd"], r["acv_pct"], median_sppd, median_acv), axis=1
+    )
+    end_m["quadrant"] = end_m.apply(
+        lambda r: classify_quadrant(r["sppd"], r["acv_pct"], median_sppd, median_acv), axis=1
+    )
+
+    comp = prev_m[["sku", "sppd", "acv_pct", "quadrant"]].merge(
+        end_m[["sku", "sppd", "acv_pct", "quadrant"]],
+        on="sku", suffixes=("_p1", "_p2"),
+    )
+    movers = comp[comp["quadrant_p1"] != comp["quadrant_p2"]].copy()
+
+    if movers.empty:
+        return None
+
+    movers["rank_delta"] = (
+        movers["quadrant_p2"].map(_QUADRANT_RANK).fillna(0)
+        - movers["quadrant_p1"].map(_QUADRANT_RANK).fillna(0)
+    )
+    best = movers.loc[movers["rank_delta"].abs().idxmax()]
+
+    name_row = products_df[products_df["sku"] == best["sku"]]
+    product_name = name_row.iloc[0]["product_name"] if not name_row.empty else best["sku"]
+
+    return {
+        "sku": best["sku"],
+        "product_name": product_name,
+        "sppd_p1": float(best["sppd_p1"]),
+        "sppd_p2": float(best["sppd_p2"]),
+        "acv_pct_p1": float(best["acv_pct_p1"]),
+        "acv_pct_p2": float(best["acv_pct_p2"]),
+        "quadrant_p1": best["quadrant_p1"],
+        "quadrant_p2": best["quadrant_p2"],
+        "q1_label": prev_q,
+        "q2_label": end_q,
     }
 
 
@@ -229,17 +333,31 @@ def _render_narrative(protagonists):
 
     if "migration" in protagonists:
         p = protagonists["migration"]
-        children.append(
-            _protagonist_block(
-                "Movement tells the story",
-                f"A single snapshot hides momentum. The migration view tracks "
-                f"how items shift between quadrants over time. An item that was "
-                f"a question mark last quarter and is now a hidden gem demands "
-                f"different action than one drifting the other way. "
-                f"Select the Migration tab below to see quarter-over-quarter "
-                f"arrows for every SKU in the portfolio.",
+        if "quadrant_p1" in p:
+            children.append(
+                _protagonist_block(
+                    "The mover",
+                    f"{p['product_name']} was classified "
+                    f"{p['quadrant_p1']} in {p['q1_label']} "
+                    f"({p['sppd_p1']:.4f} velocity, "
+                    f"{fmt_pct(p['acv_pct_p1'])} distribution) "
+                    f"and shifted to {p['quadrant_p2']} by {p['q2_label']} "
+                    f"({p['sppd_p2']:.4f} velocity, "
+                    f"{fmt_pct(p['acv_pct_p2'])} distribution). "
+                    f"The Migration tab tracks these moves for every SKU "
+                    f"in the portfolio.",
+                )
             )
-        )
+        else:
+            children.append(
+                _protagonist_block(
+                    "Movement tells the story",
+                    "A single snapshot hides momentum. The migration view tracks "
+                    "how items shift between quadrants over time. "
+                    "Select the Migration tab below to see quarter-over-quarter "
+                    "arrows for every SKU in the portfolio.",
+                )
+            )
 
     children.append(
         html.P(

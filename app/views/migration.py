@@ -33,6 +33,7 @@ from app.constants import (
     MIGRATION_UNFAVORABLE,
     QUADRANT_LABELS,
     REFERENCE,
+    SPPD_FORMULA,
     TEXT_SECONDARY,
     TOKYO_40,
     TOKYO_70,
@@ -837,6 +838,11 @@ def layout():
             # Migration summary table (shown when arrows > _MAX_ARROWS).
             html.Div(
                 id="migration-summary-table",
+            ),
+            # SPPD formula note.
+            html.P(
+                SPPD_FORMULA,
+                className="formula-note",
             ),
         ],
         id="migration-view",

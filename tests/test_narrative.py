@@ -134,6 +134,62 @@ class TestFindProtagonists:
         )
         assert result == {}
 
+    def test_migration_uses_real_mover_when_multi_quarter(
+        self, narrative_dist_df, sample_stores_df, narrative_products_df
+    ):
+        """When data spans two quarters and a SKU changes quadrant, migration is real."""
+        rows = []
+        # Q3 2025: MOVER-001 is a question mark (low vel, low dist — 2 stores, low units).
+        for i in range(1, 3):
+            rows.append({
+                "sku": "MOVER-001", "store_id": f"STR-{i:04d}",
+                "week_ending": "2025-08-01", "units_sold": 1, "dollars_sold": 5.0,
+            })
+        # Q4 2025: MOVER-001 velocity jumps (same stores, much higher units).
+        for i in range(1, 3):
+            rows.append({
+                "sku": "MOVER-001", "store_id": f"STR-{i:04d}",
+                "week_ending": "2025-11-01", "units_sold": 500, "dollars_sold": 2500.0,
+            })
+        # Stable star across both quarters for median anchor.
+        for q_date in ["2025-08-01", "2025-11-01"]:
+            for i in range(1, 16):
+                rows.append({
+                    "sku": "STAR-001", "store_id": f"STR-{i:04d}",
+                    "week_ending": q_date, "units_sold": 100, "dollars_sold": 500.0,
+                })
+        scan_df = pd.DataFrame(rows)
+
+        dist_rows = list(narrative_dist_df.to_dict("records"))
+        for i in range(1, 3):
+            dist_rows.append({
+                "sku": "MOVER-001", "store_id": f"STR-{i:04d}", "retailer_id": "RET-001",
+                "chain_name": "Walmart", "region": "Northeast", "state": "NY",
+                "volume_tier": "C", "authorized_date": "2024-01-01",
+                "deauthorized_date": None, "is_active": True, "weeks_with_sales": 10,
+                "total_units": 10, "total_dollars": 50.0, "avg_weekly_units": 1,
+                "first_scan_week": "2024-01-07", "last_scan_week": "2025-11-01",
+            })
+        dist_df = pd.DataFrame(dist_rows)
+
+        products = list(narrative_products_df.to_dict("records"))
+        products.append({
+            "sku": "MOVER-001", "product_name": "Seasonal Salsa",
+            "product_line": "Artisan Sauces", "wholesale_price": 5.0,
+        })
+        products_df = pd.DataFrame(products)
+
+        protagonists = _find_protagonists(
+            scan_df, dist_df, sample_stores_df, products_df,
+            filters={"start_quarter": "Q3 2025", "end_quarter": "Q4 2025"},
+        )
+        assert "migration" in protagonists
+        m = protagonists["migration"]
+        assert "quadrant_p1" in m
+        assert "quadrant_p2" in m
+        assert m["quadrant_p1"] != m["quadrant_p2"]
+        assert m["product_name"] == "Seasonal Salsa"
+
 
 # ── Narrative rendering ──────────────────────────────────────────
 

@@ -31,6 +31,7 @@ from app.constants import (
     GRIDLINE,
     HK_35,
     INK,
+    SPPD_FORMULA,
     TEXT_SECONDARY,
     WHITE,
     fmt_dollars,
@@ -292,6 +293,11 @@ def layout():
             html.Div(id="expansion-detail-card"),
             # Hidden store for expansion data (avoids recomputing for detail).
             dcc.Store(id="expansion-data-store", data="[]"),
+            # SPPD formula note.
+            html.P(
+                SPPD_FORMULA,
+                className="formula-note",
+            ),
         ],
     )
 

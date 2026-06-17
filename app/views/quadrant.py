@@ -265,6 +265,8 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
             x=0,
             font=dict(family=FONT_SANS, size=12, color=TEXT_SECONDARY),
             bgcolor="rgba(0,0,0,0)",
+            entrywidth=180,
+            entrywidthmode="pixels",
         ),
     )
 

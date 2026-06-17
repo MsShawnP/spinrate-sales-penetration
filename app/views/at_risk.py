@@ -34,6 +34,7 @@ from app.constants import (
     INK,
     SG_20,
     SG_55,
+    SPPD_FORMULA,
     TEXT_SECONDARY,
     TOKYO_20,
     TOKYO_40,
@@ -360,6 +361,11 @@ def layout():
             # Hidden stores for data.
             dcc.Store(id="at-risk-data-store", data="[]"),
             dcc.Store(id="watchlist-data-store", data="[]"),
+            # SPPD formula note.
+            html.P(
+                SPPD_FORMULA,
+                className="formula-note",
+            ),
         ],
     )
 

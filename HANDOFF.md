@@ -1,5 +1,18 @@
 # Handoff — Spinrate Sales Penetration
 
+## 2026-06-17 (session 6 — production data fix + UI polish)
+
+**Started from:** Production had stale data (ACV clustered 25-35%), Expansion/At-Risk tabs broken, legend truncation, missing migration protagonist, SPPD footer only on quadrant tab.
+
+**Did:** Synced archetype-variance data to production Postgres (Python CSV dump → fly sftp → on-machine restore). Added real migration protagonist detection (compares consecutive quarters, finds quadrant movers). Fixed quadrant legend truncation (entrywidth). Added SPPD formula to all four tabs. 139 tests passing. Deployed v2.
+
+**State:** Live at spinrate.lailarallc.com. All four views loading with correct data variance (ACV 5%-62%). All 5 narrative protagonists render with real data. Health check passing. 139 tests.
+
+**Next:**
+1. Run `/ce:compound` — extract learnings
+2. Visually verify production in browser (computer-use timed out this session)
+3. EDI fixes (#9, #10, #11) — separate session from edi-reconciliation-tool directory
+
 ## 2026-06-16 (session 5b — context continuation)
 
 **Started from:** Context compaction mid-session. At-risk three-tier scoring verification in progress — fading archetype seeded but watchlist tier had 0 items.
