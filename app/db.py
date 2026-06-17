@@ -203,6 +203,68 @@ def get_scan_data(filters=None):
     return _cached("scan_data", filters, _load)
 
 
+def get_scan_data_agg(filters=None):
+    """Fetch per-SKU aggregated scan data from fct_scan_data.
+
+    Returns ~50 rows instead of ~465K by aggregating in Postgres.
+    Columns returned: sku, total_units, total_dollars, door_count.
+    """
+    filters = filters or {}
+
+    def _load():
+        clauses = []
+        params = []
+
+        start_q = filters.get("start_quarter")
+        end_q = filters.get("end_quarter")
+        if start_q:
+            start_date = _quarter_start_date(start_q)
+            clauses.append("sd.week_ending >= %s")
+            params.append(start_date)
+        if end_q:
+            end_date = _quarter_end_date(end_q)
+            clauses.append("sd.week_ending <= %s")
+            params.append(end_date)
+
+        retailers = filters.get("retailers")
+        region = filters.get("region")
+        needs_store_join = bool(retailers) or bool(region)
+
+        if needs_store_join:
+            base = (
+                "SELECT sd.sku, "
+                "SUM(sd.units_sold) AS total_units, "
+                "SUM(sd.dollars_sold) AS total_dollars, "
+                "COUNT(DISTINCT sd.store_id) AS door_count "
+                "FROM fct_scan_data sd "
+                "INNER JOIN dim_stores ds ON sd.store_id = ds.store_id"
+            )
+            if retailers:
+                placeholders = ", ".join(["%s"] * len(retailers))
+                clauses.append(f"ds.retailer IN ({placeholders})")
+                params.extend(retailers)
+            if region:
+                clauses.append("ds.region = %s")
+                params.append(region)
+        else:
+            base = (
+                "SELECT sd.sku, "
+                "SUM(sd.units_sold) AS total_units, "
+                "SUM(sd.dollars_sold) AS total_dollars, "
+                "COUNT(DISTINCT sd.store_id) AS door_count "
+                "FROM fct_scan_data sd"
+            )
+
+        sql = base
+        if clauses:
+            sql += " WHERE " + " AND ".join(clauses)
+        sql += " GROUP BY sd.sku ORDER BY sd.sku"
+
+        return _execute_query(sql, params)
+
+    return _cached("scan_data_agg", filters, _load)
+
+
 def get_distribution(filters=None):
     """Fetch distribution/authorization data from fct_distribution.
 
@@ -302,10 +364,14 @@ def get_products():
 
 
 def get_quarterly_sppd(filters=None):
-    """Compute quarterly SPPD per SKU aggregated in SQL.
+    """Quarterly SPPD per SKU from the pre-aggregated mart.
 
-    Returns ~50×12 rows instead of ~1.2M raw scan rows. Used by the
-    at-risk trend calculation to avoid OOM on constrained VMs.
+    Unfiltered path reads mart_quarterly_sppd directly (~600 rows, no
+    GROUP BY). Filtered path (retailer/region) falls back to a GROUP BY
+    over fct_scan_data since the mart has no retailer dimension.
+
+    SPPD source of truth is mart_quarterly_sppd in dbt:
+      Total Units / Carrying Stores / Days in Period.
 
     Columns returned: sku, quarter, total_units, door_count, sppd.
     Quarter format: '2025Q3' (pandas period string).
@@ -313,14 +379,23 @@ def get_quarterly_sppd(filters=None):
     filters = filters or {}
 
     def _load():
-        clauses = []
-        params = []
-
         retailers = filters.get("retailers")
         region = filters.get("region")
-        needs_store_join = bool(retailers) or bool(region)
+        needs_store_filter = bool(retailers) or bool(region)
 
-        if needs_store_join:
+        if not needs_store_filter:
+            sql = (
+                "SELECT sku, year AS yr, quarter AS qtr, "
+                "total_units::float AS total_units, "
+                "carrying_stores::float AS door_count, "
+                "sppd::float AS sppd "
+                "FROM mart_quarterly_sppd "
+                "ORDER BY sku, yr, qtr"
+            )
+            df = _execute_query(sql)
+        else:
+            clauses = []
+            params = []
             base = (
                 "SELECT sd.sku, "
                 "EXTRACT(YEAR FROM sd.week_ending)::int AS yr, "
@@ -337,27 +412,16 @@ def get_quarterly_sppd(filters=None):
             if region:
                 clauses.append("ds.region = %s")
                 params.append(region)
-        else:
-            base = (
-                "SELECT sd.sku, "
-                "EXTRACT(YEAR FROM sd.week_ending)::int AS yr, "
-                "EXTRACT(QUARTER FROM sd.week_ending)::int AS qtr, "
-                "SUM(sd.units_sold)::float AS total_units, "
-                "COUNT(DISTINCT sd.store_id)::float AS door_count "
-                "FROM fct_scan_data sd"
-            )
+            sql = base + " WHERE " + " AND ".join(clauses)
+            sql += " GROUP BY sd.sku, yr, qtr ORDER BY sd.sku, yr, qtr"
+            df = _execute_query(sql, params)
+            if not df.empty:
+                df["sppd"] = df["total_units"] / df["door_count"] / 91.0
 
-        sql = base
-        if clauses:
-            sql += " WHERE " + " AND ".join(clauses)
-        sql += " GROUP BY sd.sku, yr, qtr ORDER BY sd.sku, yr, qtr"
-
-        df = _execute_query(sql, params)
         if df.empty:
             return pd.DataFrame(columns=["sku", "quarter", "total_units", "door_count", "sppd"])
 
         df["quarter"] = df["yr"].astype(int).astype(str) + "Q" + df["qtr"].astype(int).astype(str)
-        df["sppd"] = df["total_units"] / df["door_count"] / 91.0
         return df[["sku", "quarter", "total_units", "door_count", "sppd"]]
 
     return _cached("quarterly_sppd", filters, _load)
