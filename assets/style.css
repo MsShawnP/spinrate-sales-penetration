@@ -52,13 +52,16 @@
     padding: var(--ll-space-base) 0;
     border-bottom: 1px solid var(--ll-london-85);
     margin-bottom: var(--ll-space-lg);
+    box-sizing: border-box;
+    max-width: 100%;
 }
 
 .filter-group {
     display: flex;
     flex-direction: column;
     gap: var(--ll-space-xs);
-    min-width: 180px;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .filter-group label {
