@@ -2,6 +2,16 @@
 
 *Durable choices with rationale. Updated as decisions are made.*
 
+### 2026-06-18 — Do not defer AG Grid JS; keep pre-rendered panel hydration
+- **Why:** Deferring AG Grid's JS off the initial Quadrant-only paint requires the `dag.AgGrid` components to NOT be mounted at load. But the pre-rendered-panel fix mounts all four panels at load specifically so the data callbacks (which fire on load and write to `expansion-grid`/`at-risk-grid`/`watchlist-grid` `rowData`) always find their targets. Every route to deferring the grid — placeholder swap, same-ID div, or gating the callbacks — removes the mounted target or gates the callback on tab activation, which is exactly the callback race that caused the At-Risk default-load bug. The two are architecturally coupled; you can't shave the grid off first paint without re-coupling to the hydration logic. After the loading overlay landed, the overlay covers the whole hydration window anyway, so a lighter Quadrant paint underneath it wouldn't change what the prospect sees.
+- **Scope:** spinrate tab hydration (layout.py `_build_content_area` + the per-view data callbacks). Applies to any future "lazy-load a tab's heavy component" idea in this app.
+- **Do not:** Unmount the grids from the initial layout, or gate the expansion/at-risk data callbacks on tab activation, to save bundle weight. If revisited, it must be a deliberate refactor that moves grid mount AND its data callbacks behind a shared tab-activation gate together, with tests asserting At-Risk/Expansion still populate on first open.
+
+### 2026-06-18 — Loading state lives in app.index_string, not the Dash layout
+- **Why:** Anything placed in `app.layout` only appears after the Dash renderer hydrates — which is the exact multi-second window being covered for. Injecting the overlay as static HTML/CSS into `index_string` (before `{%app_entry%}`) makes the browser paint branded content on the first frame, independent of the renderer. The overlay clears itself by watching the DOM for the rendered Plotly chart, not via a Dash callback (a callback can't run until the thing it would hide is already gone).
+- **Scope:** spinrate cold-link first paint. Pattern applies to any Dash tool sent as a cold link where hydration latency is visible.
+- **Do not:** Move the loading state into the Dash layout or make it depend on the Dash renderer/clientside callbacks being ready. Keep the clearing logic a plain DOM watcher with a safety timeout.
+
 ### 2026-06-17 — Push heavy aggregation to SQL for memory-constrained VMs
 - **Why:** The at-risk trend calculation loaded ~1.2M raw scan rows for OLS regression, causing OOM on a 1024MB Fly.io VM. Pushing GROUP BY to SQL returns ~600 rows — same analytical result, 2000x less memory. The OLS logic operates on quarterly SPPD either way.
 - **Scope:** Any Cinderhaven-backed view that needs multi-quarter trend analysis. Applies to at-risk and any future view that runs regressions over historical data.

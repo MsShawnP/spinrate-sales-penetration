@@ -1,7 +1,7 @@
 # Plan — Spinrate Sales Penetration
 
 **Tier:** Heavy
-**Status:** Performance Fix D deployed. 145 tests. Compound pass pending.
+**Status:** Loading state + Performance Fix D deployed to production. 145 tests. Compound pass pending.
 
 ## Goal (2026-06-15)
 
@@ -9,7 +9,7 @@ Interactive penetration × velocity quadrant dashboard for the Lailara portfolio
 
 ## Focus
 
-Performance Fix D committed. Deploy and `/ce:compound`.
+Loading state shipped. Run `/ce:compound`.
 
 ## Tasks
 
@@ -34,5 +34,6 @@ Performance Fix D committed. Deploy and `/ce:compound`.
 - [x] Profile expansion + at-risk callbacks in production (#4, #5)
 - [x] Fix cold-cache performance — Fix D: SQL aggregation (465K rows → ~50)
 - [x] Commit UX round 2 changes
-- [ ] Deploy performance fix to production
+- [x] Deploy performance fix to production (shipped with the loading-state deploy)
+- [x] Branded pre-hydration loading state for cold-link first paint (deployed)
 - [ ] `/ce:compound`

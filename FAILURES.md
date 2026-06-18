@@ -2,6 +2,12 @@
 
 *What didn't work and why, so we don't repeat it.*
 
+### 2026-06-18 — Could not measure first-paint via the standard browser APIs in the preview tool
+- **What happened:** Tried to read First Contentful Paint with `performance.getEntriesByType('paint')` in the preview/automation browser — returned an empty array despite `PerformanceObserver.supportedEntryTypes` reporting `paint` as supported. Separately, `preview_screenshot` timed out (30s) every time, even with the spinner animation paused.
+- **Root cause:** The automation browser doesn't populate Paint Timing entries the way a normal Chrome session does. The screenshot timeout is the Dash dev server holding connections open (long-poll / keep-alive) so the page never reaches the "network idle" state the screenshot tool waits for.
+- **Fix:** Measured first paint by instrumenting the overlay's own inline script with temporary `performance.now()` marks (`window.__srPaintAt` / `__srClearedAt`), read them via `preview_eval`, then stripped the marks before commit. Verified appearance with `preview_inspect` computed styles (exact token values) instead of a screenshot.
+- **Lesson:** In the preview/automation browser, don't rely on `getEntriesByType('paint')` for FCP or on `preview_screenshot` for a Dash dev-server page. Instrument with `performance.now()` marks for timing and use `preview_inspect` for visual/style verification — the tool guidance already says inspect is more reliable than screenshots for styles.
+
 ### 2026-06-17 — At-risk OOM invisible from outside; only visible in fly logs
 - **What happened:** At-risk tab returned zero rows in production. Health checks passed, app responded 200 on all other tabs. No user-visible error.
 - **Root cause:** The at-risk trend calculation loaded all ~1.2M raw scan rows (12 quarters × ~100K rows each) for OLS regression. On a 1024MB Fly.io VM with 2 gunicorn workers, this exceeded available memory. The OOM killed the worker, Firecracker restarted it, and health checks passed on the fresh process — so the failure was invisible unless you checked `fly logs` or specifically clicked the at-risk tab.

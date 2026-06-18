@@ -1,5 +1,15 @@
 # Handoff — Spinrate Sales Penetration
 
+## 2026-06-18 16:54 (session 11 — branded loading state)
+
+**Started from:** Spin Rate is sent to prospects as a cold link; the ~5.6s first hydration showed a blank white screen that reads as broken. Two asks: branded loading state (must-have), AG Grid defer (only if clean).
+
+**Did:** Added a pre-hydration loading overlay via `app.index_string` in app/app.py — static HTML/CSS injected into the page body before `{%app_entry%}`, so it paints on the first frame before any Dash JS runs. Inline `MutationObserver` clears it when `#quadrant-chart .js-plotly-plot` renders (i.e. default tab interactive), with a 20s safety timeout. Navy spinner + brand text on Canvas, literal Lailara tokens, respects `prefers-reduced-motion`. Measured in-browser: branded first paint ~0.33–0.63s vs blank-until-interactive before. Declined the AG Grid defer — can't be decoupled from the pre-rendered-panel hydration without reintroducing the At-Risk callback race (see DECISIONS). Deployed to production (`fly deploy`), verified live HTML serves the overlay before the app entry point. This deploy also shipped the previously-pending Performance Fix D (Fix D was on main, undeployed).
+
+**State:** #1 live at spinrate.lailarallc.com, both `iad` machines healthy, 145 tests green. Loading state committed (`7caed46`). Pre-existing uncommitted changes (app/db.py, two CSS files, review.yaml, screenshots/) left untouched.
+
+**Next:** Run `/ce:compound`. If real cold-link first-paint still feels slow, the next lever is the server-side quadrant callback (DB), not the overlay. AG Grid defer would need a deliberate test-guarded refactor (grid mount + data callbacks behind a shared tab-activation gate).
+
 ## 2026-06-17 (session 10 — Performance Fix D)
 
 **Started from:** Profiling showed `get_scan_data` pulling 465K rows from fct_scan_data (4.6s cold). User picked Fix D: SQL aggregation.
