@@ -363,6 +363,26 @@ def get_products():
     return _cached("products", {}, _load)
 
 
+def _quarterly_sppd_from_scan(clauses, params):
+    """Aggregate quarterly SPPD from fct_scan_data via GROUP BY."""
+    base = (
+        "SELECT sd.sku, "
+        "EXTRACT(YEAR FROM sd.week_ending)::int AS yr, "
+        "EXTRACT(QUARTER FROM sd.week_ending)::int AS qtr, "
+        "SUM(sd.units_sold)::float AS total_units, "
+        "COUNT(DISTINCT sd.store_id)::float AS door_count "
+        "FROM fct_scan_data sd"
+    )
+    if clauses:
+        base += " INNER JOIN dim_stores ds ON sd.store_id = ds.store_id"
+        base += " WHERE " + " AND ".join(clauses)
+    base += " GROUP BY sd.sku, yr, qtr ORDER BY sd.sku, yr, qtr"
+    df = _execute_query(base, params)
+    if not df.empty:
+        df["sppd"] = df["total_units"] / df["door_count"] / 91.0
+    return df
+
+
 def get_quarterly_sppd(filters=None):
     """Quarterly SPPD per SKU from the pre-aggregated mart.
 
@@ -393,18 +413,13 @@ def get_quarterly_sppd(filters=None):
                 "ORDER BY sku, yr, qtr"
             )
             df = _execute_query(sql)
+            if df.empty:
+                # Mart not yet deployed — fall back to fct_scan_data GROUP BY.
+                df = _quarterly_sppd_from_scan([], [])
+
         else:
             clauses = []
             params = []
-            base = (
-                "SELECT sd.sku, "
-                "EXTRACT(YEAR FROM sd.week_ending)::int AS yr, "
-                "EXTRACT(QUARTER FROM sd.week_ending)::int AS qtr, "
-                "SUM(sd.units_sold)::float AS total_units, "
-                "COUNT(DISTINCT sd.store_id)::float AS door_count "
-                "FROM fct_scan_data sd "
-                "INNER JOIN dim_stores ds ON sd.store_id = ds.store_id"
-            )
             if retailers:
                 placeholders = ", ".join(["%s"] * len(retailers))
                 clauses.append(f"ds.retailer IN ({placeholders})")
@@ -412,11 +427,7 @@ def get_quarterly_sppd(filters=None):
             if region:
                 clauses.append("ds.region = %s")
                 params.append(region)
-            sql = base + " WHERE " + " AND ".join(clauses)
-            sql += " GROUP BY sd.sku, yr, qtr ORDER BY sd.sku, yr, qtr"
-            df = _execute_query(sql, params)
-            if not df.empty:
-                df["sppd"] = df["total_units"] / df["door_count"] / 91.0
+            df = _quarterly_sppd_from_scan(clauses, params)
 
         if df.empty:
             return pd.DataFrame(columns=["sku", "quarter", "total_units", "door_count", "sppd"])
