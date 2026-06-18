@@ -11,7 +11,7 @@ import logging
 
 import dash_ag_grid as dag
 import pandas as pd
-from dash import Input, Output, callback, dcc, html, no_update
+from dash import Input, Output, callback, dcc, html
 
 logger = logging.getLogger(__name__)
 
@@ -383,13 +383,9 @@ def register_callbacks():
         Output("watchlist-data-store", "data"),
         Output("watchlist-section", "style"),
         Input("filter-state", "data"),
-        Input("main-tabs", "value"),
     )
-    def _update_at_risk_view(filter_json, active_tab):
+    def _update_at_risk_view(filter_json):
         """Recompute at-risk list when filters change."""
-        if active_tab != "at-risk":
-            return (no_update,) * 7
-
         filters = json.loads(filter_json) if filter_json else {}
 
         try:

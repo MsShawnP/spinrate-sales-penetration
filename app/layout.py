@@ -53,13 +53,14 @@ def _build_tabs():
 
 
 def _build_content_area():
-    """Build the loading-wrapped content area."""
-    return dcc.Loading(
-        id="tab-content-loading",
-        type="default",
-        color=CHICAGO_20,
-        children=html.Div(id="tab-content"),
-    )
+    """Build pre-rendered tab panels. All four layouts exist from page load;
+    a callback toggles display so data callbacks always find their targets."""
+    return html.Div([
+        html.Div(quadrant.layout(), id="tab-panel-quadrant", style={"display": "block"}),
+        html.Div(migration.layout(), id="tab-panel-migration", style={"display": "none"}),
+        html.Div(expansion.layout(), id="tab-panel-expansion", style={"display": "none"}),
+        html.Div(at_risk.layout(), id="tab-panel-at-risk", style={"display": "none"}),
+    ])
 
 
 def _build_narrative_section():
@@ -467,17 +468,19 @@ def register_layout():
             return _fallback_narrative()
 
     @callback(
-        Output("tab-content", "children"),
+        Output("tab-panel-quadrant", "style"),
+        Output("tab-panel-migration", "style"),
+        Output("tab-panel-expansion", "style"),
+        Output("tab-panel-at-risk", "style"),
         Input("main-tabs", "value"),
     )
-    def _render_tab(tab_value):
-        """Render the selected view's layout."""
-        if tab_value == "quadrant":
-            return quadrant.layout()
-        elif tab_value == "migration":
-            return migration.layout()
-        elif tab_value == "expansion":
-            return expansion.layout()
-        elif tab_value == "at-risk":
-            return at_risk.layout()
-        return html.Div("Unknown tab.")
+    def _toggle_tab_visibility(tab_value):
+        """Show the active tab panel, hide the rest."""
+        show = {"display": "block"}
+        hide = {"display": "none"}
+        return (
+            show if tab_value == "quadrant" else hide,
+            show if tab_value == "migration" else hide,
+            show if tab_value == "expansion" else hide,
+            show if tab_value == "at-risk" else hide,
+        )

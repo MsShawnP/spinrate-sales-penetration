@@ -12,7 +12,7 @@ import logging
 import dash_ag_grid as dag
 import numpy as np
 import pandas as pd
-from dash import Input, Output, State, callback, dcc, html, no_update
+from dash import Input, Output, State, callback, dcc, html
 
 logger = logging.getLogger(__name__)
 
@@ -306,13 +306,9 @@ def register_callbacks():
         Output("expansion-annotation", "children"),
         Output("expansion-data-store", "data"),
         Input("filter-state", "data"),
-        Input("main-tabs", "value"),
     )
-    def _update_expansion_view(filter_json, active_tab):
+    def _update_expansion_view(filter_json):
         """Recompute expansion list when filters change."""
-        if active_tab != "expansion":
-            return no_update, no_update, no_update, no_update
-
         filters = json.loads(filter_json) if filter_json else {}
 
         try:
