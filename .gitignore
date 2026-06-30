@@ -38,3 +38,7 @@ venv/
 
 # Logs
 *.log
+
+# Security - secret leak prevention
+*.pem
+secrets.*
