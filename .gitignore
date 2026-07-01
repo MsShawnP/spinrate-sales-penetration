@@ -42,3 +42,7 @@ venv/
 # Security - secret leak prevention
 *.pem
 secrets.*
+
+# Dev artifacts (local UI review — not app history)
+review.yaml
+screenshots/
