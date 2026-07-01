@@ -203,64 +203,82 @@ def get_scan_data(filters=None):
     return _cached("scan_data", filters, _load)
 
 
-def get_scan_data_agg(filters=None):
-    """Fetch per-SKU aggregated scan data from fct_scan_data.
+def _scan_data_agg_from_scan(clauses, params, needs_store_join=False):
+    """Aggregate per-SKU scan totals from fct_scan_data via GROUP BY."""
+    if needs_store_join:
+        base = (
+            "SELECT sd.sku, "
+            "SUM(sd.units_sold) AS total_units, "
+            "SUM(sd.dollars_sold) AS total_dollars, "
+            "COUNT(DISTINCT sd.store_id) AS door_count "
+            "FROM fct_scan_data sd "
+            "INNER JOIN dim_stores ds ON sd.store_id = ds.store_id"
+        )
+    else:
+        base = (
+            "SELECT sd.sku, "
+            "SUM(sd.units_sold) AS total_units, "
+            "SUM(sd.dollars_sold) AS total_dollars, "
+            "COUNT(DISTINCT sd.store_id) AS door_count "
+            "FROM fct_scan_data sd"
+        )
+    if clauses:
+        base += " WHERE " + " AND ".join(clauses)
+    base += " GROUP BY sd.sku ORDER BY sd.sku"
+    return _execute_query(base, params)
 
-    Returns ~50 rows instead of ~465K by aggregating in Postgres.
-    Columns returned: sku, total_units, total_dollars, door_count.
+
+def get_scan_data_agg(filters=None):
+    """Fetch per-SKU aggregated scan data.
+
+    Unfiltered path reads mart_sku_scan_totals directly (~50 rows, no
+    GROUP BY). Filtered path (retailer/region) falls back to a GROUP BY
+    over fct_scan_data since the mart has no retailer dimension.
+
+    Returns ~50 rows. Columns: sku, total_units, total_dollars, door_count.
     """
     filters = filters or {}
 
     def _load():
+        retailers = filters.get("retailers")
+        region = filters.get("region")
+        needs_store_filter = bool(retailers) or bool(region)
+
+        if not needs_store_filter:
+            sql = (
+                "SELECT sku, "
+                "total_units::float AS total_units, "
+                "total_dollars::float AS total_dollars, "
+                "door_count::int AS door_count "
+                "FROM mart_sku_scan_totals "
+                "ORDER BY sku"
+            )
+            df = _execute_query(sql)
+            if df.empty:
+                df = _scan_data_agg_from_scan([], [])
+            return df
+
         clauses = []
         params = []
 
         start_q = filters.get("start_quarter")
         end_q = filters.get("end_quarter")
         if start_q:
-            start_date = _quarter_start_date(start_q)
             clauses.append("sd.week_ending >= %s")
-            params.append(start_date)
+            params.append(_quarter_start_date(start_q))
         if end_q:
-            end_date = _quarter_end_date(end_q)
             clauses.append("sd.week_ending <= %s")
-            params.append(end_date)
+            params.append(_quarter_end_date(end_q))
 
-        retailers = filters.get("retailers")
-        region = filters.get("region")
-        needs_store_join = bool(retailers) or bool(region)
+        placeholders = ", ".join(["%s"] * len(retailers)) if retailers else ""
+        if retailers:
+            clauses.append(f"ds.retailer IN ({placeholders})")
+            params.extend(retailers)
+        if region:
+            clauses.append("ds.region = %s")
+            params.append(region)
 
-        if needs_store_join:
-            base = (
-                "SELECT sd.sku, "
-                "SUM(sd.units_sold) AS total_units, "
-                "SUM(sd.dollars_sold) AS total_dollars, "
-                "COUNT(DISTINCT sd.store_id) AS door_count "
-                "FROM fct_scan_data sd "
-                "INNER JOIN dim_stores ds ON sd.store_id = ds.store_id"
-            )
-            if retailers:
-                placeholders = ", ".join(["%s"] * len(retailers))
-                clauses.append(f"ds.retailer IN ({placeholders})")
-                params.extend(retailers)
-            if region:
-                clauses.append("ds.region = %s")
-                params.append(region)
-        else:
-            base = (
-                "SELECT sd.sku, "
-                "SUM(sd.units_sold) AS total_units, "
-                "SUM(sd.dollars_sold) AS total_dollars, "
-                "COUNT(DISTINCT sd.store_id) AS door_count "
-                "FROM fct_scan_data sd"
-            )
-
-        sql = base
-        if clauses:
-            sql += " WHERE " + " AND ".join(clauses)
-        sql += " GROUP BY sd.sku ORDER BY sd.sku"
-
-        return _execute_query(sql, params)
+        return _scan_data_agg_from_scan(clauses, params, needs_store_join=True)
 
     return _cached("scan_data_agg", filters, _load)
 
