@@ -32,17 +32,12 @@ Four quadrants:
 
 ## Run
 
-Copy `.env.example` to `.env` and fill in `DATABASE_URL`, `DASH_AUTH_USERNAME`,
-and `DASH_AUTH_PASSWORD` (the app fails to start without the auth pair — it
-has no other access control).
+Copy `.env.example` to `.env` and fill in `DATABASE_URL`.
 
 ```
 pip install -e .
 python wsgi.py
 ```
-
-The app is gated behind HTTP Basic Auth; `/health` stays unauthenticated for
-Fly's health checks.
 
 ---
 

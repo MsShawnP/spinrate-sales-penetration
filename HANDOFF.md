@@ -1,5 +1,15 @@
 # Handoff — Spinrate Sales Penetration
 
+## 2026-07-01 16:38 (session 12 — pending code review, prod outage fix)
+
+**Started from:** Two pending uncommitted changes flagged from session 11 (db.py mart-read perf, CSS overflow fix) plus dev artifacts to gitignore.
+
+**Did:** Reviewed and committed the two pending code changes (`7c7125e`, `8e34498`), gitignored dev artifacts (`6c3866a`), pushed. Redeployed to ship them — deploy surfaced that **prod was already down**: `/health` 503 because spinrate's `DATABASE_URL` Fly secret held a stale `postgres`-role password (unrelated to any code in this repo). Investigated with permission (did not touch the DB), found the currently-working password already existed in `cinderhaven-data-platform/.env` from a 2026-06-30 session, and — with explicit go-ahead — used it to fix `DATABASE_URL` on spinrate plus two other affected apps (ask-cinderhaven, edi-reconciliation-tool). Three other Cinderhaven-consumer apps were already fine and untouched. Verified each with a real query, not just a passing health check. Full detail in memory (`project_prod-db-desync-blocker.md` and recall-blast-radius's `recall_infra_topology.md`).
+
+**State:** spinrate.lailarallc.com live, `/health` → `{"database":true,"status":"ok"}`, quadrant renders real data (50 SKUs, $99.2M). **Also discovered mid-wrap:** a separate, concurrent session ran a full audit of this repo while this session was working, producing `docs/AUDIT-2026-07-01.md` and two commits I did not make (`e3b1b3f` HTTP Basic Auth, `de842a6` remove `conn.commit()`) — plus an in-progress, uncommitted partial revert of that same Basic Auth change in the working tree (`app/app.py`, `pyproject.toml`), and an uncommitted quadrant legend fix (`app/views/quadrant.py`). **Not resolved this session** — flagged to the user, left untouched pending their review. Confirmed `DASH_AUTH_USERNAME`/`DASH_AUTH_PASSWORD` are NOT set as Fly secrets, so deploying current HEAD (`de842a6`) as-is would crash the app on boot.
+
+**Next:** Resolve the concurrent-session collision before any further commit/deploy on this repo: decide whether to keep, finish, or discard the Basic Auth change and the quadrant legend fix; review `docs/AUDIT-2026-07-01.md`'s other findings (indexed-SPPD benchmark mismatch, at-risk Level/Trend window mismatch, ACV%>1, others). Do not deploy `de842a6` without setting `DASH_AUTH_USERNAME`/`DASH_AUTH_PASSWORD` first if Basic Auth is kept.
+
 ## 2026-06-18 16:54 (session 11 — branded loading state)
 
 **Started from:** Spin Rate is sent to prospects as a cold link; the ~5.6s first hydration showed a blank white screen that reads as broken. Two asks: branded loading state (must-have), AG Grid defer (only if clean).

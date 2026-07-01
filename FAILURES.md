@@ -2,6 +2,18 @@
 
 *What didn't work and why, so we don't repeat it.*
 
+### 2026-07-01 — Redeployed without baselining /health first, surfaced an outage mid-rollout
+- **What happened:** Redeployed spinrate to ship two verified code fixes. The deploy errored with a Fly API timeout mid-rollout, and only then was it discovered that production was already returning 503 (`database:false`) before the deploy even started — the deploy just rolled machines that were already destined to fail Fly's health gate.
+- **Root cause:** Assumed prod was healthy going into the deploy instead of checking. The actual break (a stale `DATABASE_URL` secret) predated the deploy entirely.
+- **Fix:** None needed to the deploy itself — separately fixed the credential (see DECISIONS.md). 
+- **Lesson:** Always curl `/health` (or equivalent) before redeploying, even for a "just shipping a verified fix" deploy. A calm baseline check surfaces a pre-existing outage cleanly; discovering it via a failed rollout is alarming and wastes time distinguishing "did my deploy break this" from "was this already broken."
+
+### 2026-07-01 — Mischaracterized a `critical` check as a `warning` when translating to plain English
+- **What happened:** Told the user "the database server itself still shows one internal warning light" when the actual check status was `critical` (`pg: critical — connect: connection refused` on the cinderhaven-db app). Also separately cited a real `warning` status (Fly autoscaler's stopped-machine check) for spinrate, and blurred the two together in the summary.
+- **Root cause:** Simplifying jargon for a non-technical summary dropped the actual severity level, not just the technical detail.
+- **Fix:** Re-pulled `flyctl checks list` for both apps and gave the exact check names/statuses/output.
+- **Lesson:** When translating infra status to plain English, keep the severity word (critical/warning/passing) verbatim even while simplifying everything else around it — severity is exactly the thing a non-technical reader needs preserved.
+
 ### 2026-06-18 — Could not measure first-paint via the standard browser APIs in the preview tool
 - **What happened:** Tried to read First Contentful Paint with `performance.getEntriesByType('paint')` in the preview/automation browser — returned an empty array despite `PerformanceObserver.supportedEntryTypes` reporting `paint` as supported. Separately, `preview_screenshot` timed out (30s) every time, even with the spinner animation paused.
 - **Root cause:** The automation browser doesn't populate Paint Timing entries the way a normal Chrome session does. The screenshot timeout is the Dash dev server holding connections open (long-poll / keep-alive) so the page never reaches the "network idle" state the screenshot tool waits for.
