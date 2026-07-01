@@ -78,7 +78,6 @@ def _execute_query(sql, params=None):
             cur.execute(sql, params or ())
             cols = [desc[0] for desc in cur.description]
             rows = cur.fetchall()
-        conn.commit()
         df = pd.DataFrame(rows, columns=cols)
         for col in df.columns:
             if df[col].dtype == object and len(df) > 0:
