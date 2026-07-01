@@ -4,7 +4,6 @@ import os
 import secrets
 
 import dash
-import dash_auth
 
 app = dash.Dash(
     __name__,
@@ -15,26 +14,6 @@ app = dash.Dash(
 )
 server = app.server
 server.secret_key = os.environ.get("FLASK_SECRET_KEY", secrets.token_hex(32))
-
-# ── Auth ──────────────────────────────────────────────────────────────
-# Publicly exposed on Fly with no auth otherwise lets anyone enumerate the
-# full dataset via the Dash callback endpoint. Shared HTTP Basic credential
-# (not per-user SSO) fits this tool's use — a demo shared with prospects,
-# not an internal multi-user app. /health stays public for Fly's checks.
-# Required, not optional: a missing env var must fail startup, not silently
-# reopen the app to the public.
-_AUTH_USERNAME = os.environ.get("DASH_AUTH_USERNAME")
-_AUTH_PASSWORD = os.environ.get("DASH_AUTH_PASSWORD")
-if not _AUTH_USERNAME or not _AUTH_PASSWORD:
-    raise RuntimeError(
-        "DASH_AUTH_USERNAME and DASH_AUTH_PASSWORD must be set (env vars / "
-        "Fly secrets). The app has no other access control."
-    )
-dash_auth.BasicAuth(
-    app,
-    {_AUTH_USERNAME: _AUTH_PASSWORD},
-    public_routes=["/health"],
-)
 
 # ── Branded loading overlay ──────────────────────────────────────────
 # Spin Rate is sent to prospects as a cold link, so the first hydration
