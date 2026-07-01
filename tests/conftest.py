@@ -4,6 +4,14 @@ Provides sample DataFrames matching the Cinderhaven SSOT schema so
 tests run without a live Postgres connection.
 """
 
+import os
+
+# app.app requires these to be set before it's imported (fails closed if
+# missing). Test-only values — set before any test module can import it
+# transitively via app.views.*.
+os.environ.setdefault("DASH_AUTH_USERNAME", "test")
+os.environ.setdefault("DASH_AUTH_PASSWORD", "test")
+
 import pandas as pd
 import pytest
 
