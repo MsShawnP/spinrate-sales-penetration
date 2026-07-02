@@ -10,6 +10,7 @@ from app.views.at_risk import (
     TIER_CONFIG,
     WINDOW_NOTE,
     _COLUMN_DEFS,
+    _DEFAULT_COL_DEF,
     _build_summary,
     build_at_risk_data,
     layout,
@@ -552,6 +553,68 @@ class TestWindowDisclosure:
         assert "headerTooltip" in col
         assert "8 quarters" in col["headerTooltip"]
         assert "independent" in col["headerTooltip"]
+
+
+# ── Column header readability ──────────────────────────────────────
+
+
+class TestColumnHeaderReadability:
+    """Grid headers ("Idx SPPD", "Current $", "Gap vs Median", ...) must be
+    fully readable, not ellipsis-truncated at a too-narrow fixed width."""
+
+    def test_wrap_header_text_enabled(self):
+        assert _DEFAULT_COL_DEF["wrapHeaderText"] is True
+        assert _DEFAULT_COL_DEF["autoHeaderHeight"] is True
+
+    def test_both_grids_use_shared_default_col_def(self):
+        """Both at-risk-grid and watchlist-grid must get the same header
+        wrapping behavior -- not just whichever one someone remembered to
+        update."""
+        result = layout()
+
+        def _find_ag_grid(component, target_id):
+            if hasattr(component, "id") and component.id == target_id:
+                return component
+            children = getattr(component, "children", None)
+            if isinstance(children, list):
+                for child in children:
+                    found = _find_ag_grid(child, target_id)
+                    if found is not None:
+                        return found
+            elif children is not None:
+                return _find_ag_grid(children, target_id)
+            return None
+
+        at_risk_grid = _find_ag_grid(result, "at-risk-grid")
+        watchlist_grid = _find_ag_grid(result, "watchlist-grid")
+        assert at_risk_grid.defaultColDef is _DEFAULT_COL_DEF
+        assert watchlist_grid.defaultColDef is _DEFAULT_COL_DEF
+
+    def test_narrow_header_columns_wide_enough_for_their_label(self):
+        """Columns with short field-name-derived widths must be wide
+        enough to hold their (possibly multi-word) header without relying
+        solely on wrapping to avoid a single truncated word."""
+        min_width_by_field = {
+            "indexed_sppd": 100,   # "Idx SPPD"
+            "trend": 90,            # "Trend"
+            "sppd": 90,             # "SPPD"
+            "current_dollars": 110,  # "Current $"
+            "velocity_gap": 110,    # "Gap vs Median"
+        }
+        for field, min_width in min_width_by_field.items():
+            col = next(c for c in _COLUMN_DEFS if c["field"] == field)
+            assert col["width"] >= min_width, (
+                f"{field} column width {col['width']} is too narrow for its header"
+            )
+
+    def test_data_columns_have_full_name_tooltips(self):
+        """Every numeric/abbreviated-header data column carries a
+        headerTooltip with the full name, as a fallback if wrapping alone
+        isn't enough (e.g. a very narrow viewport)."""
+        tooltip_fields = {"indexed_sppd", "trend", "sppd", "current_dollars", "velocity_gap"}
+        for field in tooltip_fields:
+            col = next(c for c in _COLUMN_DEFS if c["field"] == field)
+            assert col.get("headerTooltip"), f"{field} column is missing a headerTooltip"
 
 
 # ── Helpers ──────────────────────────────────────────────────────

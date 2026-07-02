@@ -208,7 +208,7 @@ _COLUMN_DEFS = [
     {
         "field": "sku",
         "headerName": "SKU",
-        "width": 110,
+        "width": 120,
         "pinned": "left",
     },
     {
@@ -222,7 +222,7 @@ _COLUMN_DEFS = [
     {
         "field": "tier_label",
         "headerName": "Tier",
-        "width": 130,
+        "width": 150,
         "cellStyle": {"function": """
             params.data.at_risk_tier === 'act_now'
                 ? {background: '#fde8e7', color: '#7a0906', fontWeight: 'bold'}
@@ -234,20 +234,20 @@ _COLUMN_DEFS = [
     {
         "field": "signal",
         "headerName": "Signal",
-        "width": 100,
+        "width": 110,
         "tooltipField": "signal",
     },
     {
         "field": "indexed_sppd",
         "headerName": "Idx SPPD",
-        "width": 90,
+        "width": 110,
         "valueFormatter": {"function": "d3.format('.2f')(params.value)"},
-        "headerTooltip": "Level: computed over the selected date-range filter.",
+        "headerTooltip": "Indexed SPPD (Level): computed over the selected date-range filter.",
     },
     {
         "field": "trend",
         "headerName": "Trend",
-        "width": 80,
+        "width": 100,
         "cellStyle": {"function": """
             params.value === 'declining'
                 ? {color: '#b82d4a'}
@@ -260,23 +260,37 @@ _COLUMN_DEFS = [
     {
         "field": "sppd",
         "headerName": "SPPD",
-        "width": 80,
+        "width": 100,
         "valueFormatter": {"function": "d3.format('.4f')(params.value)"},
+        "headerTooltip": "Sales Per Point of Distribution.",
     },
     {
         "field": "current_dollars",
         "headerName": "Current $",
-        "width": 100,
+        "width": 130,
         "valueFormatter": {"function": "d3.format('$,.0f')(params.value)"},
+        "headerTooltip": "Current quarterly dollars.",
     },
     {
         "field": "velocity_gap",
-        "headerName": "Gap vs Med",
-        "width": 100,
+        "headerName": "Gap vs Median",
+        "width": 130,
         "valueFormatter": {"function": "d3.format('+.1%')(params.value)"},
+        "headerTooltip": "Indexed SPPD gap vs. the category median (1.0).",
         "sort": "asc",
     },
 ]
+
+# Shared by both grids -- wrapHeaderText/autoHeaderHeight let multi-word
+# headers ("Idx SPPD", "Current $", "Gap vs Median") wrap onto a second
+# line instead of ellipsis-truncating at the column's fixed pixel width.
+_DEFAULT_COL_DEF = {
+    "sortable": True,
+    "filter": True,
+    "resizable": True,
+    "wrapHeaderText": True,
+    "autoHeaderHeight": True,
+}
 
 
 # ── Layout ───────────────────────────────────────────────────────
@@ -313,11 +327,7 @@ def layout():
                         id="at-risk-grid",
                         columnDefs=_COLUMN_DEFS,
                         rowData=[],
-                        defaultColDef={
-                            "sortable": True,
-                            "filter": True,
-                            "resizable": True,
-                        },
+                        defaultColDef=_DEFAULT_COL_DEF,
                         dashGridOptions={
                             "pagination": True,
                             "paginationPageSize": 25,
@@ -357,11 +367,7 @@ def layout():
                         id="watchlist-grid",
                         columnDefs=_COLUMN_DEFS,
                         rowData=[],
-                        defaultColDef={
-                            "sortable": True,
-                            "filter": True,
-                            "resizable": True,
-                        },
+                        defaultColDef=_DEFAULT_COL_DEF,
                         dashGridOptions={
                             "pagination": True,
                             "paginationPageSize": 15,
