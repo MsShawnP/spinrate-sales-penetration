@@ -98,6 +98,43 @@ class TestCalculateAcvPct:
         result = calculate_acv_pct(sample_dist_df, empty_stores)
         assert result.empty
 
+    def test_carrying_store_missing_from_dim_stores_is_excluded(self, sample_stores_df):
+        """A carrying store absent from dim_stores must not inflate ACV%
+        past 1.0 -- it isn't part of the addressable universe (the
+        denominator), so it can't count toward the numerator either.
+
+        Regression test: previously an unmatched store defaulted to
+        weight=1 via fillna(1), letting the numerator exceed the
+        denominator (ACV% > 100%).
+        """
+        # CHP-AS-001 authorized in all 5 A-tier stores (weight 15) plus one
+        # "ghost" store that doesn't exist in dim_stores.
+        dist_with_ghost = pd.DataFrame([
+            {"sku": "CHP-AS-001", "store_id": "STR-0001"},
+            {"sku": "CHP-AS-001", "store_id": "STR-0002"},
+            {"sku": "CHP-AS-001", "store_id": "STR-0003"},
+            {"sku": "CHP-AS-001", "store_id": "STR-0004"},
+            {"sku": "CHP-AS-001", "store_id": "STR-0005"},
+            {"sku": "CHP-AS-001", "store_id": "STR-GHOST"},
+        ])
+        result = calculate_acv_pct(dist_with_ghost, sample_stores_df)
+        row = result[result["sku"] == "CHP-AS-001"].iloc[0]
+
+        # Ghost store contributes nothing -- same as the 5-A-tier-only case.
+        assert pytest.approx(row["carrying_weight"], abs=0.001) == 15
+        assert pytest.approx(row["acv_pct"], abs=0.001) == 15 / 40
+        assert row["acv_pct"] <= 1.0
+
+    def test_acv_pct_never_exceeds_one(self, sample_stores_df):
+        """Defense-in-depth: acv_pct is clipped to 1.0 even if every
+        carrying store happened to be a ghost relative to a hypothetical
+        smaller total_weight (belt-and-suspenders on top of the inner join)."""
+        dist_all_known = pd.DataFrame([
+            {"sku": "CHP-PS-001", "store_id": f"STR-{i:04d}"} for i in range(1, 21)
+        ])
+        result = calculate_acv_pct(dist_all_known, sample_stores_df)
+        assert (result["acv_pct"] <= 1.0).all()
+
 
 # ── Category median SPPD (full-dataset benchmark) ───────────────────
 

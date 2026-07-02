@@ -96,6 +96,12 @@ def calculate_acv_pct(dist_df, stores_df):
     ACV% = sum(carrying store weights) / sum(all addressable store weights)
     Weights: volume tier A=3, B=2, C=1.
 
+    A carrying store that isn't in the store dimension (stores_df) is
+    dropped from the numerator rather than defaulted to weight=1 -- it
+    isn't part of the addressable universe that makes up the denominator
+    either, so counting it would let the numerator exceed the denominator.
+    acv_pct is additionally clipped to 1.0 as a defense-in-depth guard.
+
     Parameters
     ----------
     dist_df : DataFrame
@@ -106,6 +112,7 @@ def calculate_acv_pct(dist_df, stores_df):
     Returns
     -------
     DataFrame with columns: sku, carrying_weight, total_weight, acv_pct.
+    acv_pct is always in [0, 1].
     """
     if dist_df.empty or stores_df.empty:
         return pd.DataFrame(columns=["sku", "carrying_weight", "total_weight", "acv_pct"])
@@ -117,15 +124,17 @@ def calculate_acv_pct(dist_df, stores_df):
     if total_weight == 0:
         return pd.DataFrame(columns=["sku", "carrying_weight", "total_weight", "acv_pct"])
 
+    # Inner join: a carrying store absent from the store dimension isn't
+    # part of the addressable universe, so it can't contribute to the
+    # numerator either.
     carrying = dist_df[["sku", "store_id"]].drop_duplicates().merge(
-        stores[["store_id", "weight"]], on="store_id", how="left"
+        stores[["store_id", "weight"]], on="store_id", how="inner"
     )
-    carrying["weight"] = carrying["weight"].fillna(1)
 
     per_sku = carrying.groupby("sku")["weight"].sum().reset_index()
     per_sku.columns = ["sku", "carrying_weight"]
     per_sku["total_weight"] = total_weight
-    per_sku["acv_pct"] = per_sku["carrying_weight"] / total_weight
+    per_sku["acv_pct"] = (per_sku["carrying_weight"] / total_weight).clip(upper=1.0)
 
     return per_sku
 
