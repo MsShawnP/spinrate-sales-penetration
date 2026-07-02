@@ -562,16 +562,17 @@ class TestColumnHeaderReadability:
     fully readable, not ellipsis-truncated at a too-narrow fixed width.
 
     Headers render on one line via the shared data_grid() helper's
-    columnSize="autoSize" + columnSizeOptions={"skipHeader": False} --
-    each column sizes to fit its widest value AND its header -- rather
-    than the old wrapHeaderText/autoHeaderHeight approach (which wrapped
-    onto a second line instead of widening the column)."""
+    columnSize="responsiveSizeToFit" -- columns re-fit to the grid width
+    whenever data loads or the grid resizes. (columnSize="autoSize" was
+    tried first but measured against the empty initial rowData and
+    collapsed every column to a single character.) Rather than the old
+    wrapHeaderText/autoHeaderHeight approach (which wrapped onto a
+    second line instead of widening the column)."""
 
-    def test_autosize_columns_for_full_header_readability(self):
+    def test_responsive_size_to_fit_for_full_header_readability(self):
         result = layout()
         at_risk_grid = _find_ag_grid(result, "at-risk-grid")
-        assert at_risk_grid.columnSize == "autoSize"
-        assert at_risk_grid.columnSizeOptions == {"skipHeader": False}
+        assert at_risk_grid.columnSize == "responsiveSizeToFit"
 
     def test_both_grids_use_shared_grid_config(self):
         """Both at-risk-grid and watchlist-grid must get identical grid
@@ -582,7 +583,6 @@ class TestColumnHeaderReadability:
         watchlist_grid = _find_ag_grid(result, "watchlist-grid")
         assert at_risk_grid.defaultColDef == watchlist_grid.defaultColDef
         assert at_risk_grid.columnSize == watchlist_grid.columnSize
-        assert at_risk_grid.columnSizeOptions == watchlist_grid.columnSizeOptions
 
     def test_narrow_header_columns_wide_enough_for_their_label(self):
         """Columns with short field-name-derived widths must be wide

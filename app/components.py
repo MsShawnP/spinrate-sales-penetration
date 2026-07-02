@@ -27,9 +27,10 @@ def data_grid(grid_id, column_defs, aria_label=None):
     One source of truth so all grids behave identically:
     - No pagination and ``domLayout='autoHeight'`` → every row renders, no
       vertical scroll.
-    - ``columnSize='autoSize'`` with ``skipHeader=False`` → each column sizes
-      to fit its widest value AND its header, so all text is visible on a
-      single line (no wrapping, no ``…`` truncation).
+    - ``columnSize='responsiveSizeToFit'`` → columns re-fit to the grid
+      width whenever data loads or the grid resizes (``autoSize`` measured
+      against the empty initial ``rowData`` and collapsed every column to
+      a single character).
     - ``.spinrate-grid`` applies a compact font and tighter cell padding.
     - Wrapped in ``.grid-wide`` so the table may extend wider than the
       centered content column.
@@ -39,8 +40,10 @@ def data_grid(grid_id, column_defs, aria_label=None):
         columnDefs=column_defs,
         rowData=[],
         defaultColDef={"sortable": True, "filter": True, "resizable": True},
-        columnSize="autoSize",
-        columnSizeOptions={"skipHeader": False},
+        # responsiveSizeToFit re-fits columns to the grid width whenever the
+        # data loads or the grid resizes. autoSize measured against the empty
+        # initial rowData and collapsed columns to a single character.
+        columnSize="responsiveSizeToFit",
         dashGridOptions={
             "pagination": False,
             "domLayout": "autoHeight",

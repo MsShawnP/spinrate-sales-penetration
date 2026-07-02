@@ -436,21 +436,10 @@
     white-space: nowrap;
 }
 
-/* Allow tables to break out wider than the centered content column */
+/* Table wrapper — full content-column width; columns fill it via
+   responsiveSizeToFit, so no empty gutter and no breakout past the column. */
 .grid-wide {
-    width: 94vw;
-    max-width: 94vw;
-    position: relative;
-    left: 50%;
-    transform: translateX(-50%);
+    width: 100%;
     margin: 16px 0;
     overflow-x: auto;
-}
-
-@media (max-width: 640px) {
-    .grid-wide {
-        width: 100%;
-        left: 0;
-        transform: none;
-    }
 }
