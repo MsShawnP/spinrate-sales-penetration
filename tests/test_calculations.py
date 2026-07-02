@@ -554,3 +554,18 @@ class TestDaysInQuarterRange:
     def test_invalid_quarter_fallback(self):
         """Invalid quarter string falls back to 91."""
         assert days_in_quarter_range("Q5 2025", "Q1 2025") == 91
+
+    def test_invalid_end_quarter_number_falls_back_instead_of_overcounting(self):
+        """Regression test: int(sq[1]) with no range check parsed "Q9" as
+        quarter 9 instead of rejecting it. As a start_quarter this was
+        accidentally masked by the max(..., 1) floor, but as an
+        end_quarter it inflated the count instead of falling back.
+
+        Q1 2025 -> Q9 2025 must fall back to 91 (one quarter), not the
+        819 (9 quarters) the unvalidated parse used to produce.
+        """
+        assert days_in_quarter_range("Q1 2025", "Q9 2025") == 91
+
+    def test_quarter_zero_falls_back(self):
+        """Q0 is not a valid quarter number."""
+        assert days_in_quarter_range("Q0 2025", "Q1 2025") == 91

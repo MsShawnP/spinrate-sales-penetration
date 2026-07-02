@@ -556,12 +556,23 @@ def days_in_quarter_range(start_quarter, end_quarter):
     Each quarter is 91 days (13 weeks).  Returns total days for the
     inclusive range from start_quarter through end_quarter.
     Parses quarter strings directly — no hardcoded year list.
+
+    Falls back to 91 (one quarter) for any input that isn't a valid
+    "Q<1-4> <year>" string. Previously used int(sq[1]) with no range
+    check, so e.g. "Q9 2025" parsed as quarter 9 instead of being
+    rejected -- harmless as a start_quarter (the max(..., 1) floor
+    happened to mask it), but wrong as an end_quarter (it would count
+    extra quarters instead of falling back).
     """
     try:
         sq, sy = start_quarter.split()
         eq, ey = end_quarter.split()
-        start_idx = int(sy) * 4 + int(sq[1])
-        end_idx = int(ey) * 4 + int(eq[1])
+        sq_num = int(sq[1:])
+        eq_num = int(eq[1:])
+        if sq[0] != "Q" or eq[0] != "Q" or not (1 <= sq_num <= 4) or not (1 <= eq_num <= 4):
+            return 91
+        start_idx = int(sy) * 4 + sq_num
+        end_idx = int(ey) * 4 + eq_num
     except (ValueError, IndexError):
         return 91
 
