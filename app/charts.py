@@ -38,9 +38,18 @@ def economist_layout(**overrides):
         ),
         dragmode=False,
         showlegend=True,
+        # Bottom, horizontal, small swatches -- every figure inherits this
+        # unless it explicitly overrides. Keeps legend placement consistent
+        # across Quadrant, Migration, and any other chart.
         legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.14,
+            xanchor="left",
+            x=0,
             font=dict(family=FONT_SANS, size=12, color=TEXT_SECONDARY),
             bgcolor="rgba(0,0,0,0)",
+            itemsizing="constant",
         ),
     )
     defaults.update(overrides)

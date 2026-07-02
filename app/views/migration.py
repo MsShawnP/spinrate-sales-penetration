@@ -459,21 +459,11 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
         ),
         annotations=all_annotations,
         shapes=_dividing_line_shapes(median_sppd, median_acv),
-        margin=dict(l=70, r=20, t=90, b=50),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="left",
-            x=0,
-            font=dict(family=FONT_SANS, size=12, color=TEXT_SECONDARY),
-            bgcolor="rgba(0,0,0,0)",
-            # Constant swatch size: without this, legend swatches inherit
-            # each trace's marker size, inflating entry widths so
-            # "Unfavorable" (the last entry) clips at the right edge
-            # instead of wrapping.
-            itemsizing="constant",
-        ),
+        # Bottom margin leaves room for the bottom legend (up to 5 entries:
+        # prior, no change, favorable, unfavorable, lateral) plus the
+        # "ACV%" x-axis title below it -- inherits legend placement from
+        # economist_layout's shared default (see app/charts.py).
+        margin=dict(l=70, r=20, t=90, b=100),
     )
 
     fig.update_layout(**layout_dict)
@@ -584,7 +574,11 @@ def build_side_by_side(migration_df, q1_label, q2_label):
             text=f"Quadrant Migration: {q1_label} vs {q2_label}",
             font=dict(family=FONT_SERIF, size=22, color=INK),
         ),
-        margin=dict(l=70, r=20, t=90, b=50),
+        # Bottom margin leaves room for the bottom legend (q1_label,
+        # q2_label entries) plus the "ACV%" x-axis title below it --
+        # inherits legend placement from economist_layout's shared
+        # default (see app/charts.py).
+        margin=dict(l=70, r=20, t=90, b=100),
     )
     fig.update_layout(**base_layout)
 
