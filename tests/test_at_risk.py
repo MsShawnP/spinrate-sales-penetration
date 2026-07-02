@@ -10,7 +10,6 @@ from app.views.at_risk import (
     TIER_CONFIG,
     WINDOW_NOTE,
     _COLUMN_DEFS,
-    _DEFAULT_COL_DEF,
     _build_summary,
     build_at_risk_data,
     layout,
@@ -560,35 +559,30 @@ class TestWindowDisclosure:
 
 class TestColumnHeaderReadability:
     """Grid headers ("Idx SPPD", "Current $", "Gap vs Median", ...) must be
-    fully readable, not ellipsis-truncated at a too-narrow fixed width."""
+    fully readable, not ellipsis-truncated at a too-narrow fixed width.
 
-    def test_wrap_header_text_enabled(self):
-        assert _DEFAULT_COL_DEF["wrapHeaderText"] is True
-        assert _DEFAULT_COL_DEF["autoHeaderHeight"] is True
+    Headers render on one line via the shared data_grid() helper's
+    columnSize="autoSize" + columnSizeOptions={"skipHeader": False} --
+    each column sizes to fit its widest value AND its header -- rather
+    than the old wrapHeaderText/autoHeaderHeight approach (which wrapped
+    onto a second line instead of widening the column)."""
 
-    def test_both_grids_use_shared_default_col_def(self):
-        """Both at-risk-grid and watchlist-grid must get the same header
-        wrapping behavior -- not just whichever one someone remembered to
-        update."""
+    def test_autosize_columns_for_full_header_readability(self):
         result = layout()
+        at_risk_grid = _find_ag_grid(result, "at-risk-grid")
+        assert at_risk_grid.columnSize == "autoSize"
+        assert at_risk_grid.columnSizeOptions == {"skipHeader": False}
 
-        def _find_ag_grid(component, target_id):
-            if hasattr(component, "id") and component.id == target_id:
-                return component
-            children = getattr(component, "children", None)
-            if isinstance(children, list):
-                for child in children:
-                    found = _find_ag_grid(child, target_id)
-                    if found is not None:
-                        return found
-            elif children is not None:
-                return _find_ag_grid(children, target_id)
-            return None
+    def test_both_grids_use_shared_grid_config(self):
+        """Both at-risk-grid and watchlist-grid must get identical grid
+        behavior -- not just whichever one someone remembered to update."""
+        result = layout()
 
         at_risk_grid = _find_ag_grid(result, "at-risk-grid")
         watchlist_grid = _find_ag_grid(result, "watchlist-grid")
-        assert at_risk_grid.defaultColDef is _DEFAULT_COL_DEF
-        assert watchlist_grid.defaultColDef is _DEFAULT_COL_DEF
+        assert at_risk_grid.defaultColDef == watchlist_grid.defaultColDef
+        assert at_risk_grid.columnSize == watchlist_grid.columnSize
+        assert at_risk_grid.columnSizeOptions == watchlist_grid.columnSizeOptions
 
     def test_narrow_header_columns_wide_enough_for_their_label(self):
         """Columns with short field-name-derived widths must be wide
@@ -618,6 +612,21 @@ class TestColumnHeaderReadability:
 
 
 # ── Helpers ──────────────────────────────────────────────────────
+
+
+def _find_ag_grid(component, target_id):
+    """Recursively find a component by id within a Dash layout tree."""
+    if hasattr(component, "id") and component.id == target_id:
+        return component
+    children = getattr(component, "children", None)
+    if isinstance(children, list):
+        for child in children:
+            found = _find_ag_grid(child, target_id)
+            if found is not None:
+                return found
+    elif children is not None:
+        return _find_ag_grid(children, target_id)
+    return None
 
 
 def _collect_text(component):

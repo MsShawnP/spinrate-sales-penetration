@@ -418,3 +418,39 @@
         min-width: 100%;
     }
 }
+
+/* ── Data grids (spreadsheet-style tables) ── */
+
+/* Compact theme: smaller font + tighter padding so every column fits one line */
+.spinrate-grid.ag-theme-alpine {
+    --ag-font-size: 12px;
+    --ag-grid-size: 4px;
+    --ag-cell-horizontal-padding: 8px;
+    --ag-row-height: 30px;
+    --ag-header-height: 34px;
+    --ag-font-family: var(--ll-sans);
+}
+
+/* Never wrap cell text — one line per cell */
+.spinrate-grid .ag-cell {
+    white-space: nowrap;
+}
+
+/* Allow tables to break out wider than the centered content column */
+.grid-wide {
+    width: 94vw;
+    max-width: 94vw;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 16px 0;
+    overflow-x: auto;
+}
+
+@media (max-width: 640px) {
+    .grid-wide {
+        width: 100%;
+        left: 0;
+        transform: none;
+    }
+}

@@ -9,7 +9,6 @@ user gets three distinct reads.  Watchlist tier rendered separately.
 import json
 import logging
 
-import dash_ag_grid as dag
 import pandas as pd
 from dash import Input, Output, callback, dcc, html
 
@@ -23,7 +22,7 @@ from app.calculations import (
     calculate_velocity_trend_from_quarterly,
     days_in_quarter_range,
 )
-from app.components import annotation_callout, dark_callout_card, hero_card
+from app.components import annotation_callout, dark_callout_card, data_grid, hero_card
 from app.constants import (
     FAIL_BG,
     FAIL_TEXT,
@@ -281,17 +280,6 @@ _COLUMN_DEFS = [
     },
 ]
 
-# Shared by both grids -- wrapHeaderText/autoHeaderHeight let multi-word
-# headers ("Idx SPPD", "Current $", "Gap vs Median") wrap onto a second
-# line instead of ellipsis-truncating at the column's fixed pixel width.
-_DEFAULT_COL_DEF = {
-    "sortable": True,
-    "filter": True,
-    "resizable": True,
-    "wrapHeaderText": True,
-    "autoHeaderHeight": True,
-}
-
 
 # ── Layout ───────────────────────────────────────────────────────
 
@@ -323,22 +311,12 @@ def layout():
                             "marginBottom": "8px",
                         },
                     ),
-                    dag.AgGrid(
-                        id="at-risk-grid",
-                        columnDefs=_COLUMN_DEFS,
-                        rowData=[],
-                        defaultColDef=_DEFAULT_COL_DEF,
-                        dashGridOptions={
-                            "pagination": True,
-                            "paginationPageSize": 25,
-                            "rowSelection": {"mode": "singleRow"},
-                            "animateRows": True,
-                        },
-                        style={"height": "400px", "width": "100%"},
-                        className="ag-theme-alpine",
+                    data_grid(
+                        "at-risk-grid",
+                        _COLUMN_DEFS,
+                        aria_label="At-risk items — act now and fix or rationalize",
                     ),
                 ],
-                **{"aria-label": "At-risk items — act now and fix or rationalize"},
             ),
             # Watchlist section (separate per R20).
             html.Div(
@@ -363,23 +341,13 @@ def layout():
                             "marginBottom": "12px",
                         },
                     ),
-                    dag.AgGrid(
-                        id="watchlist-grid",
-                        columnDefs=_COLUMN_DEFS,
-                        rowData=[],
-                        defaultColDef=_DEFAULT_COL_DEF,
-                        dashGridOptions={
-                            "pagination": True,
-                            "paginationPageSize": 15,
-                            "rowSelection": {"mode": "singleRow"},
-                            "animateRows": True,
-                        },
-                        style={"height": "350px", "width": "100%"},
-                        className="ag-theme-alpine",
+                    data_grid(
+                        "watchlist-grid",
+                        _COLUMN_DEFS,
+                        aria_label="Watchlist — emerging risk items",
                     ),
                 ],
                 id="watchlist-section",
-                **{"aria-label": "Watchlist — emerging risk items"},
             ),
             # Inline detail card (shown on row selection from either grid).
             html.Div(id="at-risk-detail-card"),

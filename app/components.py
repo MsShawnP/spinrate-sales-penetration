@@ -1,5 +1,6 @@
 """Shared reusable Dash HTML components — dark callout cards, annotations, error banners."""
 
+import dash_ag_grid as dag
 from dash import html
 
 from app.constants import (
@@ -18,6 +19,39 @@ from app.constants import (
     TEXT_SECONDARY,
     WHITE,
 )
+
+
+def data_grid(grid_id, column_defs, aria_label=None):
+    """Shared data table used by every spreadsheet-style view.
+
+    One source of truth so all grids behave identically:
+    - No pagination and ``domLayout='autoHeight'`` → every row renders, no
+      vertical scroll.
+    - ``columnSize='autoSize'`` with ``skipHeader=False`` → each column sizes
+      to fit its widest value AND its header, so all text is visible on a
+      single line (no wrapping, no ``…`` truncation).
+    - ``.spinrate-grid`` applies a compact font and tighter cell padding.
+    - Wrapped in ``.grid-wide`` so the table may extend wider than the
+      centered content column.
+    """
+    grid = dag.AgGrid(
+        id=grid_id,
+        columnDefs=column_defs,
+        rowData=[],
+        defaultColDef={"sortable": True, "filter": True, "resizable": True},
+        columnSize="autoSize",
+        columnSizeOptions={"skipHeader": False},
+        dashGridOptions={
+            "pagination": False,
+            "domLayout": "autoHeight",
+            "rowSelection": {"mode": "singleRow"},
+            "animateRows": True,
+        },
+        style={"width": "100%"},
+        className="ag-theme-alpine spinrate-grid",
+    )
+    wrapper_attrs = {"aria-label": aria_label} if aria_label else {}
+    return html.Div(grid, className="grid-wide", **wrapper_attrs)
 
 
 def dark_callout_card(title, subtitle=None, rows=None):

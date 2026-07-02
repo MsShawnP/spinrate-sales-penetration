@@ -9,7 +9,6 @@ of 10 stores filters out items too thinly distributed for credible ranking.
 import json
 import logging
 
-import dash_ag_grid as dag
 import numpy as np
 import pandas as pd
 from dash import Input, Output, State, callback, dcc, html
@@ -23,7 +22,7 @@ from app.calculations import (
     calculate_sppd_from_agg,
     days_in_quarter_range,
 )
-from app.components import annotation_callout, dark_callout_card, hero_card
+from app.components import annotation_callout, dark_callout_card, data_grid, hero_card
 from app.constants import (
     CANVAS,
     CHICAGO_20,
@@ -257,27 +256,11 @@ def layout():
             html.Div(id="expansion-summary"),
             # Annotation callout area.
             html.Div(id="expansion-annotation"),
-            # AG Grid table.
-            html.Div(
-                dag.AgGrid(
-                    id="expansion-grid",
-                    columnDefs=_COLUMN_DEFS,
-                    rowData=[],
-                    defaultColDef={
-                        "sortable": True,
-                        "filter": True,
-                        "resizable": True,
-                    },
-                    dashGridOptions={
-                        "pagination": True,
-                        "paginationPageSize": 25,
-                        "rowSelection": {"mode": "singleRow"},
-                        "animateRows": True,
-                    },
-                    style={"height": "500px", "width": "100%"},
-                    className="ag-theme-alpine",
-                ),
-                **{"aria-label": "Expansion cases — hidden gems ranked by upside"},
+            # AG Grid table (shared config — see components.data_grid).
+            data_grid(
+                "expansion-grid",
+                _COLUMN_DEFS,
+                aria_label="Expansion cases — hidden gems ranked by upside",
             ),
             # Inline detail card (shown on row selection).
             html.Div(id="expansion-detail-card"),
