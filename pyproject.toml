@@ -4,18 +4,18 @@ version = "0.1.0"
 description = "Penetration x velocity quadrant dashboard — where distribution meets shelf performance for CPG brands"
 requires-python = ">=3.11"
 dependencies = [
-    "dash>=3.0",
-    "plotly>=6.0",
-    "pandas>=2.0",
-    "numpy>=1.24",
-    "dash-ag-grid>=31.0",
-    "gunicorn>=22.0",
-    "python-dotenv>=1.0",
-    "psycopg2-binary>=2.9",
+    "dash==4.2.0",
+    "plotly==6.8.0",
+    "pandas==2.3.3",
+    "numpy==2.4.6",
+    "dash-ag-grid==31.3.1",
+    "gunicorn==23.0.0",
+    "python-dotenv==1.2.2",
+    "psycopg2-binary==2.9.12",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ruff>=0.4"]
+dev = ["pytest==8.4.2", "ruff==0.15.13"]
 
 [tool.setuptools.packages.find]
 include = ["app*"]
