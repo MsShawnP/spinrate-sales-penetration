@@ -58,6 +58,13 @@ LOW_DOOR_THRESHOLD = 10
 _BUBBLE_SIZE_MIN = 8
 _BUBBLE_SIZE_MAX = 45
 
+# Shown next to the SPPD formula only while the Indexed SPPD toggle is on.
+INDEXED_SPPD_NOTE = (
+    "Indexed SPPD = each SKU's SPPD ÷ its product line's full-dataset "
+    "median. 1.0 = category-typical; above 1 is faster-selling, below is "
+    "slower."
+)
+
 
 # ── Helper functions ──────────────────────────────────────────────
 
@@ -479,6 +486,8 @@ def layout():
                 SPPD_FORMULA,
                 className="formula-note",
             ),
+            # Indexed SPPD explanation — only populated while the toggle is on.
+            html.Div(id="indexed-sppd-note"),
             # Detail card area (populated by click-to-pin callback).
             html.Div(
                 id="quadrant-detail-card",
@@ -513,13 +522,31 @@ def register_callbacks():
     @callback(
         Output("indexed-sppd-toggle", "children"),
         Output("indexed-sppd-toggle", "style"),
+        Output("indexed-sppd-note", "children"),
         Input("indexed-mode", "data"),
     )
     def _update_toggle_label(indexed_mode):
         if indexed_mode:
-            return "Show Raw SPPD", {
-                "backgroundColor": CHICAGO_20,
-                "color": WHITE,
+            return (
+                "Show Raw SPPD",
+                {
+                    "backgroundColor": CHICAGO_20,
+                    "color": WHITE,
+                    "border": f"2px solid {CHICAGO_20}",
+                    "padding": "8px 20px",
+                    "borderRadius": "2px",
+                    "fontFamily": FONT_SANS,
+                    "fontSize": "14px",
+                    "fontWeight": "600",
+                    "cursor": "pointer",
+                },
+                html.P(INDEXED_SPPD_NOTE, className="formula-note"),
+            )
+        return (
+            "Show Indexed SPPD",
+            {
+                "backgroundColor": INFO_BG,
+                "color": CHICAGO_20,
                 "border": f"2px solid {CHICAGO_20}",
                 "padding": "8px 20px",
                 "borderRadius": "2px",
@@ -527,18 +554,9 @@ def register_callbacks():
                 "fontSize": "14px",
                 "fontWeight": "600",
                 "cursor": "pointer",
-            }
-        return "Show Indexed SPPD", {
-            "backgroundColor": INFO_BG,
-            "color": CHICAGO_20,
-            "border": f"2px solid {CHICAGO_20}",
-            "padding": "8px 20px",
-            "borderRadius": "2px",
-            "fontFamily": FONT_SANS,
-            "fontSize": "14px",
-            "fontWeight": "600",
-            "cursor": "pointer",
-        }
+            },
+            [],
+        )
 
     # Click-to-pin: clientside callback to capture clickData into selected-sku store.
     # This is registered via app.clientside_callback so it runs in the browser.

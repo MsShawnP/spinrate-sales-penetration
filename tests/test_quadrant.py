@@ -15,6 +15,7 @@ from app.calculations import (
     classify_quadrant,
 )
 from app.views.quadrant import (
+    INDEXED_SPPD_NOTE,
     LOW_DOOR_THRESHOLD,
     _build_empty_figure,
     _build_quadrant_figure,
@@ -401,6 +402,31 @@ class TestQuadrantLayout:
             return False
 
         assert _find_text(result, "Faded/dashed markers = low door count (<10 stores).")
+
+    def test_layout_has_indexed_note_placeholder(self):
+        """Layout should reserve a spot for the Indexed SPPD explanation,
+        populated by the toggle callback -- empty until indexed mode is on."""
+        result = layout()
+        ids = set()
+
+        def _collect_ids(component):
+            if hasattr(component, "id") and component.id:
+                ids.add(component.id)
+            children = getattr(component, "children", None)
+            if isinstance(children, list):
+                for child in children:
+                    _collect_ids(child)
+            elif children is not None and hasattr(children, "id"):
+                _collect_ids(children)
+
+        _collect_ids(result)
+        assert "indexed-sppd-note" in ids
+
+    def test_indexed_sppd_note_wording(self):
+        """The note explains what Indexed SPPD means and how to read it."""
+        assert "full-dataset" in INDEXED_SPPD_NOTE
+        assert "1.0" in INDEXED_SPPD_NOTE
+        assert "category-typical" in INDEXED_SPPD_NOTE
 
 
 # ── Detail card rendering ─────────────────────────────────────────
