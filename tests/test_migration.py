@@ -339,6 +339,15 @@ class TestArrowOverlay:
         assert isinstance(fig, go.Figure)
         assert any("No quadrant changes" in a.text for a in fig.layout.annotations)
 
+    def test_legend_uses_constant_item_sizing(self, two_period_metrics):
+        """Legend swatches must not inherit per-point marker size -- without
+        itemsizing="constant" the color dots render huge and sit on top of
+        the label text, inflating entry width so "Unfavorable" (the last
+        entry) clips at the right edge instead of wrapping."""
+        _, _, migration_df = two_period_metrics
+        fig = build_arrow_overlay(migration_df, "Q3 2025", "Q4 2025")
+        assert fig.layout.legend.itemsizing == "constant"
+
 
 # ── Side-by-side ─────────────────────────────────────────────────────
 

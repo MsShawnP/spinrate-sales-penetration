@@ -176,7 +176,10 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
                 x=low_door["acv_pct"].tolist(),
                 y=low_door[y_col].tolist(),
                 mode="markers",
-                name=f"{pl} (low doors)",
+                # No "(low doors)" suffix -- the low-door/normal split is
+                # communicated by the faded/dashed marker style plus the
+                # caption below the chart, not a separate legend label.
+                name=pl,
                 customdata=np.stack([
                     low_door["sku"],
                     low_door["product_name"],
@@ -279,7 +282,7 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
             rangemode="tozero",
         ),
         annotations=quadrant_annotations,
-        margin=dict(l=70, r=20, t=70, b=80),
+        margin=dict(l=70, r=20, t=70, b=100),
         legend=dict(
             orientation="h",
             yanchor="top",
@@ -292,6 +295,11 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
             # spill past the right/field boundary instead of wrapping. Letting
             # Plotly size each entry to its label lets the row wrap cleanly.
             tracegroupgap=8,
+            # Constant swatch size: without this, legend swatches inherit
+            # each trace's per-point marker size (up to 45px for bubbles),
+            # rendering huge color dots that sit on top of the label text
+            # and inflate entry widths past the right edge.
+            itemsizing="constant",
         ),
     )
 
@@ -457,6 +465,12 @@ def layout():
                 id="quadrant-chart",
                 config=CHART_CONFIG,
                 style={"minHeight": "500px"},
+            ),
+            # Low-door marker style caption (legend no longer labels this
+            # separately -- see the (low doors) trace in _build_quadrant_figure).
+            html.P(
+                "Faded/dashed markers = low door count (<10 stores).",
+                className="formula-note",
             ),
             # Summary callout (quadrant counts + top items).
             html.Div(id="quadrant-summary", className="chart-summary"),

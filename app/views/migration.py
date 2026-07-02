@@ -459,7 +459,7 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
         ),
         annotations=all_annotations,
         shapes=_dividing_line_shapes(median_sppd, median_acv),
-        margin=dict(l=70, r=20, t=70, b=50),
+        margin=dict(l=70, r=20, t=90, b=50),
         legend=dict(
             orientation="h",
             yanchor="bottom",
@@ -468,6 +468,11 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
             x=0,
             font=dict(family=FONT_SANS, size=12, color=TEXT_SECONDARY),
             bgcolor="rgba(0,0,0,0)",
+            # Constant swatch size: without this, legend swatches inherit
+            # each trace's marker size, inflating entry widths so
+            # "Unfavorable" (the last entry) clips at the right edge
+            # instead of wrapping.
+            itemsizing="constant",
         ),
     )
 

@@ -210,8 +210,21 @@ class TestBuildQuadrantFigure:
         for label in QUADRANT_LABELS.values():
             assert label in annotation_texts, f"Missing quadrant label: {label}"
 
+    def test_legend_uses_constant_item_sizing(self, sample_chart_df):
+        """Legend swatches must not inherit per-point bubble marker size
+        (up to 45px) -- without itemsizing="constant" the color dots
+        render huge and sit on top of the label text, inflating entry
+        width so rows run off the right edge instead of wrapping."""
+        chart_df, median_sppd, median_acv = sample_chart_df
+        fig = _build_quadrant_figure(chart_df, median_sppd, median_acv)
+        assert fig.layout.legend.itemsizing == "constant"
+
     def test_low_door_count_flagged(self, sample_chart_df):
-        """SKUs below door threshold appear in a separate 'low doors' trace."""
+        """SKUs below door threshold appear in a visually distinct (faded/
+        dashed) trace. The legend no longer labels this with a "(low doors)"
+        suffix -- that inflated entry width and duplicated the row per
+        product line. The distinction is now marker style plus a caption
+        below the chart (see quadrant.py layout())."""
         chart_df, median_sppd, median_acv = sample_chart_df
 
         # CHP-AS-002 has 5 doors, which is below the threshold of 10.
@@ -220,10 +233,23 @@ class TestBuildQuadrantFigure:
 
         fig = _build_quadrant_figure(chart_df, median_sppd, median_acv)
 
-        # Check that at least one trace name contains "low doors".
+        low_door_traces = [t for t in fig.data if t.marker.line.dash == "dash"]
+        assert low_door_traces, (
+            f"No dashed (low-door) trace found. Traces: {[t.name for t in fig.data]}"
+        )
+        assert low_door_traces[0].marker.opacity == 0.4
+
+    def test_low_door_trace_name_has_no_suffix(self, sample_chart_df):
+        """Regression test: legend entry names are the bare product line,
+        not '<line> (low doors)' -- that suffix duplicated the row per
+        product line and inflated entry width past the wrap boundary."""
+        chart_df, median_sppd, median_acv = sample_chart_df
+        fig = _build_quadrant_figure(chart_df, median_sppd, median_acv)
+
         trace_names = [t.name for t in fig.data if t.name]
-        has_low_door_trace = any("low doors" in name for name in trace_names)
-        assert has_low_door_trace, f"No 'low doors' trace found. Traces: {trace_names}"
+        assert trace_names, "Expected at least one named trace"
+        assert not any("low doors" in name for name in trace_names)
+        assert "Artisan Sauces" in trace_names
 
     def test_indexed_mode_changes_y_axis(self, sample_chart_df):
         """Indexed mode should change the y-axis label."""
@@ -354,6 +380,27 @@ class TestQuadrantLayout:
             return False
 
         assert _find_text(result, SPPD_FORMULA)
+
+    def test_layout_has_low_door_caption(self):
+        """Layout should explain the faded/dashed low-door marker style now
+        that the legend no longer labels it with a "(low doors)" suffix."""
+        result = layout()
+
+        def _find_text(component, target_text):
+            if hasattr(component, "children") and component.children == target_text:
+                return True
+            if hasattr(component, "children"):
+                children = component.children
+                if children is None:
+                    return False
+                if not isinstance(children, (list, tuple)):
+                    children = [children]
+                for child in children:
+                    if _find_text(child, target_text):
+                        return True
+            return False
+
+        assert _find_text(result, "Faded/dashed markers = low door count (<10 stores).")
 
 
 # ── Detail card rendering ─────────────────────────────────────────
