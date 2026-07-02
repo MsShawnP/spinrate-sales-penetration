@@ -16,7 +16,9 @@ import psycopg2
 from psycopg2 import pool
 
 from app.calculations import (
+    calculate_acv_pct,
     calculate_category_median_sppd,
+    calculate_global_medians,
     calculate_sppd_from_agg,
     days_in_quarter_range,
 )
@@ -408,6 +410,32 @@ def get_category_median_sppd():
         return calculate_category_median_sppd(full_sppd_df, products_df)
 
     return _cached("category_median_sppd", {}, _load)
+
+
+def get_global_medians():
+    """Fixed SPPD/ACV% medians for the quadrant dividing lines.
+
+    Computed from the full unfiltered dataset -- deliberately ignores any
+    active UI filter (retailer/region/date range) so the star/gem/dead/
+    question quadrant splits don't reshuffle with the current selection.
+    Cached like other query functions.
+
+    Returns a one-row DataFrame with columns: median_sppd, median_acv.
+    """
+
+    def _load():
+        scan_agg = get_scan_data_agg({})
+        dist_df = get_distribution({})
+        stores_df = get_stores()
+        if scan_agg.empty or dist_df.empty or stores_df.empty:
+            return pd.DataFrame(columns=["median_sppd", "median_acv"])
+
+        days = days_in_quarter_range(DEFAULT_START_QUARTER, DEFAULT_END_QUARTER)
+        full_sppd_df = calculate_sppd_from_agg(scan_agg, days)
+        full_acv_df = calculate_acv_pct(dist_df, stores_df)
+        return calculate_global_medians(full_sppd_df, full_acv_df)
+
+    return _cached("global_medians", {}, _load)
 
 
 def _quarterly_sppd_from_scan(clauses, params):

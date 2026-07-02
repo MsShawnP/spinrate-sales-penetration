@@ -2,9 +2,10 @@
 
 Primary visualization for Spin Rate. Each bubble is a SKU positioned by
 velocity (SPPD, y-axis) and distribution breadth (ACV%, x-axis). Bubble
-size encodes total dollars. Quadrant dividing lines recompute from medians
-when filters change. Indexed SPPD toggle rescales the y-axis to
-category-relative performance.
+size encodes total dollars. Quadrant dividing lines are fixed at the
+full-dataset median SPPD/ACV% (db.get_global_medians()) so a SKU's
+quadrant doesn't reshuffle when filters change. Indexed SPPD toggle
+rescales the y-axis to category-relative performance.
 """
 
 import json
@@ -554,6 +555,7 @@ def register_callbacks():
             dist_df = db.get_distribution(filters)
             stores_df = db.get_stores()
             category_median_df = db.get_category_median_sppd()
+            global_medians_df = db.get_global_medians()
             products_df = db.get_products()
         except Exception:
             logger.exception("Quadrant chart callback failed")
@@ -587,6 +589,15 @@ def register_callbacks():
         if chart_df.empty:
             return _build_empty_figure(), []
 
+        # Fixed dividing-line medians from the full unfiltered dataset, so
+        # quadrant membership doesn't reshuffle when filters change.
+        fixed_median_sppd = (
+            global_medians_df["median_sppd"].iloc[0] if not global_medians_df.empty else 0
+        )
+        fixed_median_acv = (
+            global_medians_df["median_acv"].iloc[0] if not global_medians_df.empty else 0
+        )
+
         # Indexed SPPD.
         if indexed_mode and not products_df.empty and not category_median_df.empty:
             indexed_df = calculate_indexed_sppd(sppd_df, category_median_df, products_df)
@@ -597,12 +608,9 @@ def register_callbacks():
             median_sppd = 1.0  # Dividing line at index = 1.0
         else:
             chart_df["indexed_sppd"] = chart_df["sppd"]
-            median_sppd = chart_df["sppd"].median() if not chart_df.empty else 0
+            median_sppd = fixed_median_sppd
 
-        median_acv = chart_df["acv_pct"].median() if not chart_df.empty else 0
-
-        if not indexed_mode:
-            median_sppd = chart_df["sppd"].median()
+        median_acv = fixed_median_acv
 
         # Bubble sizing.
         chart_df["bubble_size"] = _scale_bubble_sizes(chart_df["total_dollars"])
@@ -649,6 +657,7 @@ def register_callbacks():
             dist_df = db.get_distribution(filters)
             stores_df = db.get_stores()
             category_median_df = db.get_category_median_sppd()
+            global_medians_df = db.get_global_medians()
             products_df = db.get_products()
         except Exception:
             logger.exception("Quadrant detail card callback failed")
@@ -683,7 +692,12 @@ def register_callbacks():
 
         # Quadrant label.
         if not sppd_df.empty and not acv_df.empty:
-            merged = sppd_df.merge(acv_df[["sku", "acv_pct"]], on="sku", how="inner")
+            fixed_median_sppd = (
+                global_medians_df["median_sppd"].iloc[0] if not global_medians_df.empty else 0
+            )
+            fixed_median_acv = (
+                global_medians_df["median_acv"].iloc[0] if not global_medians_df.empty else 0
+            )
 
             if indexed_mode and not category_median_df.empty and not products_df.empty:
                 indexed_df = calculate_indexed_sppd(sppd_df, category_median_df, products_df)
@@ -692,9 +706,9 @@ def register_callbacks():
                 med_sppd = 1.0
             else:
                 y_val = sppd_val
-                med_sppd = merged["sppd"].median()
+                med_sppd = fixed_median_sppd
 
-            med_acv = merged["acv_pct"].median()
+            med_acv = fixed_median_acv
             quadrant = classify_quadrant(y_val, acv_val, med_sppd, med_acv)
         else:
             quadrant = "N/A"

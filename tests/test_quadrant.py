@@ -94,6 +94,55 @@ class TestClassifyQuadrant:
         result = classify_quadrant(sppd=1.0, acv_pct=0.5, median_sppd=1.0, median_acv=0.5)
         assert result == QUADRANT_LABELS["star"]
 
+    def test_quadrant_is_filter_independent_with_fixed_medians(
+        self, sample_scan_df, sample_dist_df, sample_stores_df, sample_products_df,
+    ):
+        """Same SKU classifies to the same quadrant whether it's evaluated
+        alone (a heavily filtered selection) or alongside its peers (a wide
+        selection), as long as the dividing-line medians come from the full,
+        unfiltered dataset rather than the filtered selection itself.
+
+        Regression test for the bug where median_sppd/median_acv were
+        chart_df["sppd"].median() / chart_df["acv_pct"].median() -- computed
+        from whatever happened to be in the filtered selection. A lone SKU
+        was always exactly at its own median, so it always classified as a
+        Star (>= comparison) no matter how weak it actually was.
+        """
+        from app.calculations import calculate_global_medians
+
+        full_sppd_df = calculate_sppd(sample_scan_df, 91)
+        full_acv_df = calculate_acv_pct(sample_dist_df, sample_stores_df)
+        global_medians = calculate_global_medians(full_sppd_df, full_acv_df)
+        fixed_median_sppd = global_medians["median_sppd"].iloc[0]
+        fixed_median_acv = global_medians["median_acv"].iloc[0]
+
+        sku = "CHP-AS-001"
+        sku_sppd = full_sppd_df[full_sppd_df["sku"] == sku]["sppd"].iloc[0]
+        sku_acv = full_acv_df[full_acv_df["sku"] == sku]["acv_pct"].iloc[0]
+
+        # CHP-AS-001 sits at the full-dataset median SPPD but well below the
+        # full-dataset median ACV% -- a Hidden Gem -- whether evaluated
+        # alone or alongside its peers, because the dividing lines don't move.
+        wide_selection_quadrant = classify_quadrant(
+            sku_sppd, sku_acv, fixed_median_sppd, fixed_median_acv
+        )
+        narrow_selection_quadrant = classify_quadrant(
+            sku_sppd, sku_acv, fixed_median_sppd, fixed_median_acv
+        )
+        assert wide_selection_quadrant == narrow_selection_quadrant == QUADRANT_LABELS["hidden_gem"]
+
+        # Demonstrate the bug this guards against: if the dividing lines
+        # were instead derived from a lone-SKU filtered selection (the old
+        # behavior), the SKU would always land at/above its own median --
+        # always a Star -- regardless of how it compares to its peers.
+        old_buggy_median_sppd = sku_sppd
+        old_buggy_median_acv = sku_acv
+        old_buggy_quadrant = classify_quadrant(
+            sku_sppd, sku_acv, old_buggy_median_sppd, old_buggy_median_acv
+        )
+        assert old_buggy_quadrant == QUADRANT_LABELS["star"]
+        assert old_buggy_quadrant != wide_selection_quadrant
+
 
 # ── Bubble figure construction ────────────────────────────────────
 

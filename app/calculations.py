@@ -212,6 +212,39 @@ def calculate_indexed_sppd(sppd_df, category_median_df, products_df):
     return result[["sku", "product_line", "sppd", "category_median_sppd", "indexed_sppd"]]
 
 
+# ── Global medians (fixed quadrant dividing lines) ─────────────────
+
+def calculate_global_medians(full_sppd_df, full_acv_df):
+    """Fixed SPPD/ACV% medians for the quadrant dividing lines.
+
+    Same rationale as calculate_category_median_sppd: must be computed over
+    the full, unfiltered dataset so the dividing lines are a fixed point of
+    reference. Otherwise a SKU's quadrant reshuffles every time a retailer/
+    region/date filter changes, even though nothing about the SKU itself
+    changed. Tradeoff: a filtered-down weak selection can legitimately land
+    entirely in one quadrant -- that's intended with a fixed benchmark.
+
+    Parameters
+    ----------
+    full_sppd_df : DataFrame
+        SPPD computed over the full, unfiltered dataset. Must contain: sku, sppd.
+    full_acv_df : DataFrame
+        ACV% computed over the full, unfiltered dataset. Must contain: sku, acv_pct.
+
+    Returns
+    -------
+    DataFrame with exactly one row and columns: median_sppd, median_acv.
+    Empty (no rows) if either input is empty.
+    """
+    if full_sppd_df.empty or full_acv_df.empty:
+        return pd.DataFrame(columns=["median_sppd", "median_acv"])
+
+    return pd.DataFrame([{
+        "median_sppd": full_sppd_df["sppd"].median(),
+        "median_acv": full_acv_df["acv_pct"].median(),
+    }])
+
+
 # ── Velocity trend ──────────────────────────────────────────────────
 
 def calculate_velocity_trend(scan_df, products_df, n_quarters=4):

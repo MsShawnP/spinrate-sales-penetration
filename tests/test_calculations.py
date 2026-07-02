@@ -9,6 +9,7 @@ from app.calculations import (
     calculate_at_risk_score,
     calculate_category_median_sppd,
     calculate_expansion_upside,
+    calculate_global_medians,
     calculate_indexed_sppd,
     calculate_sppd,
     calculate_velocity_trend,
@@ -203,6 +204,47 @@ class TestCalculateIndexedSppd:
         ])
         result = calculate_indexed_sppd(empty, category_median_df, sample_products_df)
         assert result.empty
+
+
+# ── Global medians (fixed quadrant benchmark) ────────────────────────
+
+
+class TestCalculateGlobalMedians:
+    """Fixed SPPD/ACV% medians for the quadrant dividing lines, computed
+    from the full unfiltered dataset."""
+
+    def test_medians_of_full_dataset(self):
+        """Median is computed across all SKUs, independent of product line."""
+        full_sppd_df = pd.DataFrame([
+            {"sku": "CHP-AS-001", "sppd": 0.2},
+            {"sku": "CHP-AS-002", "sppd": 0.6},
+            {"sku": "CHP-PS-001", "sppd": 1.0},
+        ])
+        full_acv_df = pd.DataFrame([
+            {"sku": "CHP-AS-001", "acv_pct": 0.1},
+            {"sku": "CHP-AS-002", "acv_pct": 0.5},
+            {"sku": "CHP-PS-001", "acv_pct": 0.9},
+        ])
+        result = calculate_global_medians(full_sppd_df, full_acv_df)
+        assert len(result) == 1
+        assert pytest.approx(result["median_sppd"].iloc[0], abs=0.001) == 0.6
+        assert pytest.approx(result["median_acv"].iloc[0], abs=0.001) == 0.5
+
+    def test_empty_sppd_input(self):
+        """Empty SPPD DataFrame returns empty result with correct columns."""
+        empty = pd.DataFrame(columns=["sku", "sppd"])
+        full_acv_df = pd.DataFrame([{"sku": "CHP-AS-001", "acv_pct": 0.5}])
+        result = calculate_global_medians(empty, full_acv_df)
+        assert result.empty
+        assert list(result.columns) == ["median_sppd", "median_acv"]
+
+    def test_empty_acv_input(self):
+        """Empty ACV% DataFrame returns empty result with correct columns."""
+        full_sppd_df = pd.DataFrame([{"sku": "CHP-AS-001", "sppd": 0.5}])
+        empty = pd.DataFrame(columns=["sku", "acv_pct"])
+        result = calculate_global_medians(full_sppd_df, empty)
+        assert result.empty
+        assert list(result.columns) == ["median_sppd", "median_acv"]
 
 
 # ── Velocity trend ──────────────────────────────────────────────────
