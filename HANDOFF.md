@@ -1,5 +1,24 @@
 # Handoff — Spinrate Sales Penetration
 
+## 2026-07-02 (session 12 follow-up — audit collision resolved)
+
+**Resolution of the "concurrent session" flag below:** the other session that was live-editing this repo during session 12 finished cleanly on its own. Full outcome, confirmed by `git log` and a green test run (181 tests, up from 145):
+
+- `98bcf79`/`2d3cc6d` — HTTP Basic Auth was added then explicitly reverted (with that session's own user confirmation) and cleaned up (`.env.example`, `README.md`, `tests/conftest.py`).
+- `4da5b60` — Indexed SPPD now benchmarks against the full dataset, not the current filter (was silently mislabeled).
+- `2c7b6c6` — fixed dividing-line medians for quadrant classification (consistency across views).
+- `3249f22` — disclosed the at-risk Level/Trend window mismatch in the UI instead of leaving it implicit.
+- `7c58bda` — clamped ACV% at 100%, reconciled store universe.
+- `1718c9f` — fixed quarter-range validation (`days_in_quarter_range`).
+- `82122a0` — tightened vacuous test guards and weak monotonicity checks.
+- `b566f23` — pinned dependencies to exact versions.
+- `eebf50d` — added a changelog; `docs/AUDIT-*.md` added to `.gitignore` (resolves the "don't commit dev artifacts" question).
+- `a6015f7`, `68cb4db`, `9b07f0a`, `a9baaea`, `ec6098a`, `3c209d7`, `6fc75ae` — a UI polish pass (legend swatches, shared hero card, Indexed SPPD explainer, grid header truncation, custom HTML legend, legends moved to bottom, shared data_grid component).
+
+My session-12 state-file edits (below) got folded into that session's `2d3cc6d` commit by an unavoidable git-index race (two sessions, one working directory, one index) — content preserved, just under a commit message that doesn't mention it. Left as-is: rewriting a commit 15+ commits back on an already-pushed, actively-progressed branch isn't worth the disruption. Tree is clean, `main` is up to date with `origin/main`. Nothing pending.
+
+**Lesson for future sessions:** if another Claude Code session is confirmed live on the same working directory, avoid `git add`/`git commit` entirely until it's done — even a scoped `git add <specific files>` can still get swept into the other session's next commit, since there's only one shared git index per working directory.
+
 ## 2026-07-01 16:38 (session 12 — pending code review, prod outage fix)
 
 **Started from:** Two pending uncommitted changes flagged from session 11 (db.py mart-read perf, CSS overflow fix) plus dev artifacts to gitignore.

@@ -2,6 +2,11 @@
 
 *Durable choices with rationale. Updated as decisions are made.*
 
+### 2026-07-02 — Stand down on git entirely when a second session is live on the same working directory
+- **Why:** During session 12, a concurrent Claude Code session was actively committing to this same repo. Scoping `git add` to only this session's own files (instead of `git add -A`) was not enough protection — the other session's next `git commit` still swept up the already-staged files, because git has one index per working directory, not one per session. No data was lost (the content landed inside the other session's commit), but the resulting history misattributes authorship and could have gone worse (e.g. a `git commit --amend` race, or a partial/conflicting stage).
+- **Scope:** Any situation where file timestamps, `git status`, or tool output reveal that something else is actively modifying the same working directory in real time (not just pre-existing uncommitted changes from a prior session — those are fine to investigate and commit normally).
+- **Do not:** Attempt to "scope around" a live concurrent session with partial `git add`. Stop all `git add`/`commit`/`push` until the other session is confirmed finished, then review the combined diff before touching git again.
+
 ### 2026-07-01 — Fix a stale credential by resyncing the consuming app, not by resetting the DB
 - **Why:** Prod 503 traced to spinrate's `DATABASE_URL` Fly secret holding a password that no longer matched the database's actual `postgres`-role password. The temptation was to reset/rotate the DB-side password. Instead, checked whether a currently-working password already existed elsewhere (it did — a 2026-06-30 session had left it in `cinderhaven-data-platform/.env`, confirmed live against the DB) and used that as the canonical value. Resetting DB-level credentials is higher blast radius (affects every consuming app at once, requires a DB restart) than updating one app's stale copy.
 - **Scope:** Any Cinderhaven-consumer app reporting `password authentication failed` or `SSL SYSCALL EOF` against `cinderhaven-db.flycast`. Full canonical-credential detail and app inventory live in recall-blast-radius's `recall_infra_topology.md` memory.
