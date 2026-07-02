@@ -2,6 +2,11 @@
 
 *Durable choices with rationale. Updated as decisions are made.*
 
+### 2026-07-02 — AG Grid shared `data_grid()` uses `columnSize="responsiveSizeToFit"`, not `"autoSize"`
+- **Why:** `autoSize` measures column width against whatever `rowData` is present at the moment AG Grid initializes — which in this app is always the empty `[]` passed at layout time, since real rows arrive later via a Dash callback. That collapsed every column to a single character in production. `responsiveSizeToFit` re-fits columns to the grid width whenever data loads or the grid resizes, so it works correctly regardless of when `rowData` actually populates.
+- **Scope:** `data_grid()` in `app/components.py`, used by At-Risk, Watchlist, and Expansion tables. Applies to any future Dash+AG Grid view in this app where `rowData` is populated asynchronously after initial mount (which is the norm here, not the exception).
+- **Do not:** Switch back to `columnSize="autoSize"` to "fix" column widths without first confirming `rowData` is non-empty at the moment AG Grid initializes. If in doubt, use `responsiveSizeToFit`.
+
 ### 2026-07-02 — Chart legends render as custom HTML/CSS, not Plotly's native SVG legend
 - **Why:** Plotly's built-in horizontal legend measures entry text width once, via canvas `measureText()`, at layout time. Source Sans 3 loads via `font-display: swap`, so if the chart draws before the font finishes loading, Plotly positions legend entries using the (narrower) fallback font's metrics and never re-measures once the real font paints in — the tail of an entry's text overflows and gets clipped by the SVG's own coordinate boundary. `Plotly.Plots.resize()`/`Plotly.react()` do not reliably fix this after the fact (see FAILURES.md). A plain HTML/CSS legend (`_build_custom_legend` in `app/views/quadrant.py`) sidesteps the whole bug class because normal DOM text reflows correctly on any font swap.
 - **Scope:** Any Plotly figure in this app whose legend renders web-font text with more than a couple of short entries. Currently applied to the Quadrant chart's legend. Migration charts (Arrow Overlay, Side-by-Side) still use Plotly's native legend since their entry counts are small and fixed — revisit if they ever show clipping.

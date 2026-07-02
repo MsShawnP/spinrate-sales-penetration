@@ -1,5 +1,15 @@
 # Handoff — Spinrate Sales Penetration
 
+## 2026-07-02 22:15 (session 13 cont'd — AG Grid autoSize bug, legend spacing, at-risk sort)
+
+**Started from:** Prior wrap point (`faba6db`) — all audit findings resolved, 181 tests passing, deployed and healthy.
+
+**Did:** Fixed a real bug in the shared `data_grid()` component: `columnSize="autoSize"` measured against the empty initial `rowData` and collapsed every column to one character — switched to `responsiveSizeToFit`, which re-fits on actual data load (`4f1535a`). Simplified `.grid-wide` CSS back to normal content-column width. Added deliberate legend entry spacing to the Migration Arrow Overlay (`07cde85`). Removed a column-level default sort on At-Risk's `velocity_gap` that was silently overriding the intentional tier-priority row order, burying the most urgent rows (`50c13b7`). Updated tests to match each fix rather than reverting. Ran lock-check → pytest → commit → deploy → verify-health each round; pushed after each.
+
+**State:** `main` pushed, matches `origin/main` (`50c13b7`). 181 tests passing. spinrate.lailarallc.com live and healthy.
+
+**Next:** Only remaining PLAN.md task is `/ce:compound` — no open bugs or pending work.
+
 ## 2026-07-02 21:00 (session 13 — audit remediation cont'd, legend clipping root-caused, shared data_grid)
 
 **Started from:** Mid-way through `docs/AUDIT-2026-07-01.md` — auth just added (item 2), Indexed SPPD fix (item 4) pending.
