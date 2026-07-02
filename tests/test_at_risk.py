@@ -10,6 +10,7 @@ from app.views.at_risk import (
     TIER_CONFIG,
     WINDOW_NOTE,
     _COLUMN_DEFS,
+    _build_summary,
     build_at_risk_data,
     layout,
 )
@@ -196,6 +197,53 @@ class TestTierConfig:
 
     def test_three_tiers_defined(self):
         assert set(TIER_CONFIG.keys()) == {"act_now", "fix_or_rationalize", "watchlist"}
+
+
+# ── Tier summary hero cards ────────────────────────────────────────
+
+
+class TestBuildSummary:
+    """Tier summary now renders Lailara design-system hero_card components
+    (shared with Expansion) instead of off-system custom chips."""
+
+    def _hero_cards(self, summary):
+        """Pull the three tier hero-card Divs out of _build_summary()'s output."""
+        result = _build_summary(summary)
+        chip_row = result.children[1]
+        return chip_row.children
+
+    def test_renders_three_hero_cards_with_counts_and_labels(self):
+        summary = {
+            "act_now_count": 3,
+            "fix_or_rationalize_count": 5,
+            "watchlist_count": 2,
+            "total_at_risk_dollars": 1000.0,
+        }
+        cards = self._hero_cards(summary)
+        assert len(cards) == 3
+
+        def _texts(card):
+            texts = []
+            for child in card.children:
+                if isinstance(child.children, str):
+                    texts.append(child.children)
+            return texts
+
+        assert _texts(cards[0]) == ["3", "Act Now"]
+        assert _texts(cards[1]) == ["5", "Fix or Rationalize"]
+        assert _texts(cards[2]) == ["2", "Watchlist"]
+
+    def test_hero_cards_use_tier_accent_colors(self):
+        """Act Now = red, Fix or Rationalize = amber, Watchlist = teal --
+        pulled from TIER_CONFIG's existing accent values."""
+        summary = {
+            "act_now_count": 1, "fix_or_rationalize_count": 1,
+            "watchlist_count": 1, "total_at_risk_dollars": 0.0,
+        }
+        cards = self._hero_cards(summary)
+        assert cards[0].style["borderTop"] == f"3px solid {TIER_CONFIG['act_now']['accent']}"
+        assert cards[1].style["borderTop"] == f"3px solid {TIER_CONFIG['fix_or_rationalize']['accent']}"
+        assert cards[2].style["borderTop"] == f"3px solid {TIER_CONFIG['watchlist']['accent']}"
 
 
 # ── build_at_risk_data ───────────────────────────────────────────

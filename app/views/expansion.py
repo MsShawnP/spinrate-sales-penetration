@@ -23,18 +23,16 @@ from app.calculations import (
     calculate_sppd_from_agg,
     days_in_quarter_range,
 )
-from app.components import annotation_callout, dark_callout_card
+from app.components import annotation_callout, dark_callout_card, hero_card
 from app.constants import (
     CANVAS,
     CHICAGO_20,
     FONT_SANS,
     FONT_SERIF,
-    GRIDLINE,
     HK_35,
     INK,
     SPPD_FORMULA,
     TEXT_SECONDARY,
-    WHITE,
     fmt_dollars,
     fmt_number,
     fmt_pct,
@@ -375,9 +373,9 @@ def register_callbacks():
                 ),
                 html.Div(
                     [
-                        _upside_hero_card("Median benchmark", summary["total_median_upside"]),
-                        _upside_hero_card("75th percentile", summary["total_p75_upside"]),
-                        _upside_hero_card("Category leader", summary["total_leader_upside"]),
+                        hero_card(fmt_dollars(summary["total_median_upside"]), "Median benchmark"),
+                        hero_card(fmt_dollars(summary["total_p75_upside"]), "75th percentile"),
+                        hero_card(fmt_dollars(summary["total_leader_upside"]), "Category leader"),
                     ],
                     style={
                         "display": "flex",
@@ -467,45 +465,6 @@ def register_callbacks():
             subtitle=f"{product_line} — {sku}",
             rows=detail_rows,
         )
-
-
-def _upside_hero_card(label, value):
-    """Render a hero card for a benchmark's total upside."""
-    return html.Div(
-        [
-            html.Span(
-                fmt_dollars(value),
-                style={
-                    "fontFamily": FONT_SERIF,
-                    "fontSize": "28px",
-                    "fontWeight": "700",
-                    "color": INK,
-                    "letterSpacing": "-0.02em",
-                    "display": "block",
-                    "lineHeight": "1.2",
-                },
-            ),
-            html.Span(
-                label,
-                style={
-                    "fontFamily": FONT_SANS,
-                    "fontSize": "13px",
-                    "fontWeight": "600",
-                    "color": TEXT_SECONDARY,
-                    "display": "block",
-                    "marginTop": "6px",
-                },
-            ),
-        ],
-        style={
-            "background": WHITE,
-            "border": f"1px solid {GRIDLINE}",
-            "borderRadius": "2px",
-            "padding": "20px 24px",
-            "minWidth": "180px",
-            "flex": "1",
-        },
-    )
 
 
 def _empty_message(text):

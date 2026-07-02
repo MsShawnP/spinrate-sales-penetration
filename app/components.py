@@ -10,9 +10,13 @@ from app.constants import (
     CARD_SUBTITLE,
     CARD_TEXT,
     FAIL_BG,
+    FONT_SANS,
+    FONT_SERIF,
     GRIDLINE,
+    INK,
     RED_42,
     TEXT_SECONDARY,
+    WHITE,
 )
 
 
@@ -92,6 +96,55 @@ def dark_callout_card(title, subtitle=None, rows=None):
             "borderRadius": "2px",
             "marginTop": "16px",
         },
+    )
+
+
+def hero_card(value, label, accent=None):
+    """Headline-metric hero card -- serif value, sans label, white card.
+
+    Shared by Expansion (dollar upside per benchmark) and At-Risk (tier
+    counts). `accent`, if given, colors a top border stripe so cards in a
+    group can be told apart by severity/category without changing the
+    neutral ink-colored value text.
+    """
+    style = {
+        "background": WHITE,
+        "border": f"1px solid {GRIDLINE}",
+        "borderRadius": "2px",
+        "padding": "20px 24px",
+        "minWidth": "180px",
+        "flex": "1",
+    }
+    if accent:
+        style["borderTop"] = f"3px solid {accent}"
+
+    return html.Div(
+        [
+            html.Span(
+                value,
+                style={
+                    "fontFamily": FONT_SERIF,
+                    "fontSize": "28px",
+                    "fontWeight": "700",
+                    "color": INK,
+                    "letterSpacing": "-0.02em",
+                    "display": "block",
+                    "lineHeight": "1.2",
+                },
+            ),
+            html.Span(
+                label,
+                style={
+                    "fontFamily": FONT_SANS,
+                    "fontSize": "13px",
+                    "fontWeight": "600",
+                    "color": TEXT_SECONDARY,
+                    "display": "block",
+                    "marginTop": "6px",
+                },
+            ),
+        ],
+        style=style,
     )
 
 

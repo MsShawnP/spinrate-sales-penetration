@@ -23,7 +23,7 @@ from app.calculations import (
     calculate_velocity_trend_from_quarterly,
     days_in_quarter_range,
 )
-from app.components import annotation_callout, dark_callout_card
+from app.components import annotation_callout, dark_callout_card, hero_card
 from app.constants import (
     FAIL_BG,
     FAIL_TEXT,
@@ -575,13 +575,25 @@ def _build_summary(summary):
             ),
             html.Div(
                 [
-                    _tier_chip("Act Now", act_now, FAIL_BG, FAIL_TEXT),
-                    _tier_chip("Fix or Rationalize", fix_or_rat, WARN_BG, WARN_TEXT),
-                    _tier_chip("Watchlist", watchlist, HK_85, HK_35),
+                    hero_card(
+                        fmt_number(act_now),
+                        TIER_CONFIG["act_now"]["label"],
+                        accent=TIER_CONFIG["act_now"]["accent"],
+                    ),
+                    hero_card(
+                        fmt_number(fix_or_rat),
+                        TIER_CONFIG["fix_or_rationalize"]["label"],
+                        accent=TIER_CONFIG["fix_or_rationalize"]["accent"],
+                    ),
+                    hero_card(
+                        fmt_number(watchlist),
+                        TIER_CONFIG["watchlist"]["label"],
+                        accent=TIER_CONFIG["watchlist"]["accent"],
+                    ),
                 ],
                 style={
                     "display": "flex",
-                    "gap": "16px",
+                    "gap": "24px",
                     "marginTop": "8px",
                     "flexWrap": "wrap",
                 },
@@ -590,37 +602,6 @@ def _build_summary(summary):
         style={
             "padding": "24px 0",
             "marginBottom": "16px",
-        },
-    )
-
-
-def _tier_chip(label, count, bg_color, text_color):
-    """Render a tier count chip with semantic color coding."""
-    return html.Div(
-        [
-            html.Span(
-                label,
-                style={
-                    "fontFamily": FONT_SANS,
-                    "fontSize": "12px",
-                    "color": text_color,
-                    "display": "block",
-                },
-            ),
-            html.Span(
-                fmt_number(count),
-                style={
-                    "fontFamily": FONT_SERIF,
-                    "fontSize": "22px",
-                    "fontWeight": "700",
-                    "color": text_color,
-                },
-            ),
-        ],
-        style={
-            "background": bg_color,
-            "padding": "8px 16px",
-            "borderRadius": "2px",
         },
     )
 
