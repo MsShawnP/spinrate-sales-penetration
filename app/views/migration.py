@@ -281,7 +281,7 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
         x=migration_df["acv_pct_p1"].tolist(),
         y=migration_df["sppd_p1"].tolist(),
         mode="markers",
-        name=f"{q1_label} (prior)",
+        name=f"{q1_label} (prior) ",  # trailing em-space adds gap before next legend entry
         customdata=np.stack([
             migration_df["sku"],
             migration_df["product_name_p1"],
@@ -307,7 +307,7 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
             x=stayers["acv_pct_p2"].tolist(),
             y=stayers["sppd_p2"].tolist(),
             mode="markers",
-            name="No change",
+            name="No change ",
             customdata=np.stack([
                 stayers["sku"],
                 stayers["product_name_p2"],
@@ -334,7 +334,7 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
             x=favorable["acv_pct_p2"].tolist(),
             y=favorable["sppd_p2"].tolist(),
             mode="markers",
-            name="Favorable",
+            name="Favorable ",
             customdata=np.stack([
                 favorable["sku"],
                 favorable["product_name_p2"],
@@ -361,7 +361,7 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
             x=unfavorable["acv_pct_p2"].tolist(),
             y=unfavorable["sppd_p2"].tolist(),
             mode="markers",
-            name="Unfavorable",
+            name="Unfavorable ",
             customdata=np.stack([
                 unfavorable["sku"],
                 unfavorable["product_name_p2"],
@@ -388,7 +388,7 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
             x=lateral["acv_pct_p2"].tolist(),
             y=lateral["sppd_p2"].tolist(),
             mode="markers",
-            name="Lateral",
+            name="Lateral ",
             customdata=np.stack([
                 lateral["sku"],
                 lateral["product_name_p2"],
@@ -459,6 +459,22 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
         ),
         annotations=all_annotations,
         shapes=_dividing_line_shapes(median_sppd, median_acv),
+        legend=dict(
+            # Mirrors the shared bottom legend (charts.economist_layout) but
+            # adds entrywidth so these few short entries don't crowd — without
+            # it the "No change" swatch butts right against "(prior)". Safe
+            # here because every label is shorter than the reserved width.
+            orientation="h",
+            yanchor="top",
+            y=-0.14,
+            xanchor="left",
+            x=0,
+            itemsizing="constant",
+            entrywidth=150,
+            entrywidthmode="pixels",
+            font=dict(family=FONT_SANS, size=12, color=TEXT_SECONDARY),
+            bgcolor="rgba(0,0,0,0)",
+        ),
         # Bottom margin leaves room for the bottom legend (up to 5 entries:
         # prior, no change, favorable, unfavorable, lateral) plus the
         # "ACV%" x-axis title below it -- inherits legend placement from
