@@ -2,6 +2,18 @@
 
 *What didn't work and why, so we don't repeat it.*
 
+### 2026-07-02 — `Plotly.Plots.resize()`/`Plotly.react()` didn't fix the legend font-swap race
+- **What happened:** Diagnosed the quadrant legend clipping bug as a Plotly.js text-measurement race against the async Source Sans 3 web font (`font-display: swap`). Tried forcing Plotly to re-measure/redraw the legend once `document.fonts.ready` resolved, via `Plotly.Plots.resize()` and separately `Plotly.react()`. Live browser tests gave inconsistent results — legend entry positions sometimes stayed frozen at their pre-swap (wrong) values even after the resize/relayout call.
+- **Root cause:** Plotly's legend text-width measurement appears to be cached in a way that isn't reliably invalidated by a resize/relayout call alone when the font-family string itself hasn't changed — only the browser's live rendering of it has (pre- vs post-swap).
+- **Fix:** Abandoned trying to force-correct Plotly's own SVG legend after the fact. Replaced it entirely with a custom HTML/CSS grid legend (`_build_custom_legend` in `app/views/quadrant.py`), which reflows correctly on any font swap because it's normal DOM text, not an SVG measurement cache.
+- **Lesson:** Don't trust `Plotly.Plots.resize()`/`Plotly.react()` to fix a legend/text sizing bug caused by an async font swap — verify live before committing to that fix. If a chart element must render web-font text at guaranteed-correct sizing, prefer plain HTML/CSS over Plotly's SVG-based legend/annotation text.
+
+### 2026-07-02 — Synthetic browser reproduction of a font-load race was too fragile to trust
+- **What happened:** Tried to cleanly reproduce the legend clipping bug in isolation by declaring a second `@font-face` rule with `local()` sources to simulate a font swap completing after Plotly's first layout pass. The test page hung / `document.fonts.load()` never resolved as expected, and repeated `preview_eval` calls timed out.
+- **Root cause:** `local()` font-face sources resolve near-synchronously (no real network delay to race against), so the synthetic setup couldn't actually recreate the timing window the real bug depends on. Compounded by sequential browser-state mutations across many eval calls in one page session, which made results hard to trust even when they did return.
+- **Fix:** Stopped trying to simulate the race and instead tunneled to the real production Postgres via `fly proxy`, then rendered the actual chart-building code against real data with real fonts loading over a real network — reproduced and later confirmed-fixed the bug cleanly on the first real-data test.
+- **Lesson:** For browser timing races (font loads, resource loads), don't try to fake the race with `local()` sources or similar shortcuts — either use the real asset over a real network, or don't attempt a synthetic repro at all. Verifying against real data early would have saved significant time here.
+
 ### 2026-07-01 — Redeployed without baselining /health first, surfaced an outage mid-rollout
 - **What happened:** Redeployed spinrate to ship two verified code fixes. The deploy errored with a Fly API timeout mid-rollout, and only then was it discovered that production was already returning 503 (`database:false`) before the deploy even started — the deploy just rolled machines that were already destined to fail Fly's health gate.
 - **Root cause:** Assumed prod was healthy going into the deploy instead of checking. The actual break (a stale `DATABASE_URL` secret) predated the deploy entirely.

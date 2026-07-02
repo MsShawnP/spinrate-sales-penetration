@@ -1,7 +1,7 @@
 # Plan — Spinrate Sales Penetration
 
 **Tier:** Heavy
-**Status:** Loading state + Performance Fix D deployed to production, prod outage (stale DB credential) fixed and verified live. Concurrent audit session (2026-07-01) resolved: Basic Auth added then reverted, quadrant legend fixed, and the full findings list addressed (Indexed SPPD benchmark, quadrant median consistency, at-risk Level/Trend disclosure, ACV% clamp, quarter validation, test hardening, dependency pinning). 181 tests. Compound pass pending.
+**Status:** Loading state + Performance Fix D deployed to production, prod outage (stale DB credential) fixed and verified live. `docs/AUDIT-2026-07-01.md` fully resolved across two concurrent sessions: Basic Auth added then reverted, Indexed SPPD benchmark fixed, quadrant median consistency, at-risk Level/Trend disclosure, ACV% clamp, quarter validation, test hardening, dependency pinning — plus (2026-07-02) the quadrant legend clipping bug root-caused and fixed (custom HTML/CSS legend replacing Plotly's native SVG legend), all chart legends standardized to bottom placement, and a shared `data_grid()` component rolled out to all three tables (no pagination, autosized columns, compact, full-width). 181 tests. Deployed and live. Compound pass pending.
 
 ## Goal (2026-06-15)
 

@@ -1,5 +1,15 @@
 # Handoff — Spinrate Sales Penetration
 
+## 2026-07-02 21:00 (session 13 — audit remediation cont'd, legend clipping root-caused, shared data_grid)
+
+**Started from:** Mid-way through `docs/AUDIT-2026-07-01.md` — auth just added (item 2), Indexed SPPD fix (item 4) pending.
+
+**Did:** Added HTTP Basic Auth then reverted it per your explicit confirmation (`98bcf79`, `2d3cc6d`). Fixed Indexed SPPD to benchmark against the full dataset instead of the current filter (`4da5b60`). Root-caused the quadrant legend clipping bug to a Plotly.js web-font-load race (not CSS) — fixed by replacing Plotly's native SVG legend with a custom HTML/CSS grid legend, which also delivered the follow-up 3+2 layout ask (`ec6098a`). Standardized all Migration chart legends to bottom placement (`3c209d7`). Verified and committed the shared `data_grid()` component (no pagination, autosized columns, compact, full-width) already on disk from other work, plus lint cleanup and test updates (`6fc75ae`). Deployed 3x, verified `/health` each time. A concurrent session independently resolved the rest of the audit (items 5–6) in parallel, no conflicts.
+
+**State:** `main` pushed, matches `origin/main`. 181 tests passing. spinrate.lailarallc.com live and healthy. All `docs/AUDIT-2026-07-01.md` findings resolved. Local `.env`/`.claude/launch.json` clean.
+
+**Next:** Only remaining PLAN.md task is `/ce:compound` — no open bugs or pending work.
+
 ## 2026-07-02 (session 12 follow-up — audit collision resolved)
 
 **Resolution of the "concurrent session" flag below:** the other session that was live-editing this repo during session 12 finished cleanly on its own. Full outcome, confirmed by `git log` and a green test run (181 tests, up from 145):
