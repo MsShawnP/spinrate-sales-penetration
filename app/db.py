@@ -15,6 +15,13 @@ import pandas as pd
 import psycopg2
 from psycopg2 import pool
 
+from app.calculations import (
+    calculate_category_median_sppd,
+    calculate_sppd_from_agg,
+    days_in_quarter_range,
+)
+from app.filters import DEFAULT_END_QUARTER, DEFAULT_START_QUARTER
+
 logger = logging.getLogger(__name__)
 
 # ── Connection pool ─────────────────────────────────────────────────
@@ -378,6 +385,29 @@ def get_products():
         return _execute_query(sql)
 
     return _cached("products", {}, _load)
+
+
+def get_category_median_sppd():
+    """Category median SPPD per product line, from the full unfiltered dataset.
+
+    Fixed benchmark for Indexed SPPD -- deliberately ignores any active
+    UI filter (retailer/region/date range) so the benchmark doesn't shift
+    with the current selection. Cached like other query functions.
+
+    Columns returned: product_line, category_median_sppd.
+    """
+
+    def _load():
+        scan_agg = get_scan_data_agg({})
+        products_df = get_products()
+        if scan_agg.empty or products_df.empty:
+            return pd.DataFrame(columns=["product_line", "category_median_sppd"])
+
+        days = days_in_quarter_range(DEFAULT_START_QUARTER, DEFAULT_END_QUARTER)
+        full_sppd_df = calculate_sppd_from_agg(scan_agg, days)
+        return calculate_category_median_sppd(full_sppd_df, products_df)
+
+    return _cached("category_median_sppd", {}, _load)
 
 
 def _quarterly_sppd_from_scan(clauses, params):

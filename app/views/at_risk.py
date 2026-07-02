@@ -93,7 +93,7 @@ def build_at_risk_data(filters):
 
     scan_agg = db.get_scan_data_agg(filters)
     stores_df = db.get_stores()
-    benchmarks_df = db.get_benchmarks()
+    category_median_df = db.get_category_median_sppd()
     products_df = db.get_products()
 
     if scan_agg.empty or stores_df.empty:
@@ -107,7 +107,7 @@ def build_at_risk_data(filters):
     if sppd_df.empty:
         return pd.DataFrame(), pd.DataFrame(), {}
 
-    indexed_df = calculate_indexed_sppd(sppd_df, benchmarks_df, products_df)
+    indexed_df = calculate_indexed_sppd(sppd_df, category_median_df, products_df)
 
     # Trend uses full history (no date filter) so seasonal patterns don't
     # dominate the OLS slope within a single year.  Uses SQL-aggregated

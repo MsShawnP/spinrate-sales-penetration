@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
+from app.calculations import calculate_category_median_sppd, calculate_sppd_from_agg
 from app.views.at_risk import (
     TIER_CONFIG,
     build_at_risk_data,
@@ -21,6 +22,14 @@ def _agg_scan(scan_df):
         total_dollars=("dollars_sold", "sum"),
         door_count=("store_id", "nunique"),
     ).reset_index()
+
+
+def _category_median(scan_df, products_df, days=91):
+    """Build a category-median benchmark from a scan fixture, mirroring
+    what db.get_category_median_sppd() computes in production (from the
+    full dataset, independent of the UI filter selection)."""
+    sppd_df = calculate_sppd_from_agg(_agg_scan(scan_df), days)
+    return calculate_category_median_sppd(sppd_df, products_df)
 
 
 def _scan_to_quarterly_sppd(scan_df):
@@ -43,13 +52,15 @@ def _scan_to_quarterly_sppd(scan_df):
 
 @pytest.fixture
 def mock_db_returns(
-    sample_scan_df, sample_dist_df, sample_stores_df, sample_products_df, sample_benchmarks_df
+    sample_scan_df, sample_dist_df, sample_stores_df, sample_products_df
 ):
     """Patch db module to return conftest sample DataFrames."""
     with patch("app.db", create=True) as mock_db:
         mock_db.get_scan_data_agg.return_value = _agg_scan(sample_scan_df)
         mock_db.get_stores.return_value = sample_stores_df.copy()
-        mock_db.get_benchmarks.return_value = sample_benchmarks_df.copy()
+        mock_db.get_category_median_sppd.return_value = _category_median(
+            sample_scan_df, sample_products_df
+        )
         mock_db.get_products.return_value = sample_products_df.copy()
         yield mock_db
 
@@ -190,13 +201,13 @@ class TestTierConfig:
 
 class TestBuildAtRiskData:
     def test_declining_below_median_is_act_now(
-        self, at_risk_scan_df, sample_stores_df, sample_benchmarks_df, multi_product_df, default_filters
+        self, at_risk_scan_df, sample_stores_df, multi_product_df, default_filters
     ):
         """SKU below median + declining → act now tier, both signals."""
         with patch("app.db", create=True) as mock_db:
             mock_db.get_scan_data_agg.return_value = _agg_scan(at_risk_scan_df)
             mock_db.get_stores.return_value = sample_stores_df
-            mock_db.get_benchmarks.return_value = sample_benchmarks_df
+            mock_db.get_category_median_sppd.return_value = _category_median(at_risk_scan_df, multi_product_df)
             mock_db.get_products.return_value = multi_product_df
             mock_db.get_quarterly_sppd.return_value = _scan_to_quarterly_sppd(at_risk_scan_df)
 
@@ -209,13 +220,13 @@ class TestBuildAtRiskData:
         assert row["signal"] == "Level + Trend"
 
     def test_flat_below_median_is_fix_or_rationalize(
-        self, flat_risk_scan_df, sample_stores_df, sample_benchmarks_df, multi_product_df, default_filters
+        self, flat_risk_scan_df, sample_stores_df, multi_product_df, default_filters
     ):
         """SKU below median + flat → fix or rationalize tier, level signal."""
         with patch("app.db", create=True) as mock_db:
             mock_db.get_scan_data_agg.return_value = _agg_scan(flat_risk_scan_df)
             mock_db.get_stores.return_value = sample_stores_df
-            mock_db.get_benchmarks.return_value = sample_benchmarks_df
+            mock_db.get_category_median_sppd.return_value = _category_median(flat_risk_scan_df, multi_product_df)
             mock_db.get_products.return_value = multi_product_df
             mock_db.get_quarterly_sppd.return_value = _scan_to_quarterly_sppd(flat_risk_scan_df)
 
@@ -228,13 +239,13 @@ class TestBuildAtRiskData:
         assert row["signal"] == "Level"
 
     def test_declining_above_median_is_watchlist(
-        self, watchlist_scan_df, sample_stores_df, sample_benchmarks_df, multi_product_df, default_filters
+        self, watchlist_scan_df, sample_stores_df, multi_product_df, default_filters
     ):
         """SKU above median + declining → watchlist tier, trend signal."""
         with patch("app.db", create=True) as mock_db:
             mock_db.get_scan_data_agg.return_value = _agg_scan(watchlist_scan_df)
             mock_db.get_stores.return_value = sample_stores_df
-            mock_db.get_benchmarks.return_value = sample_benchmarks_df
+            mock_db.get_category_median_sppd.return_value = _category_median(watchlist_scan_df, multi_product_df)
             mock_db.get_products.return_value = multi_product_df
             mock_db.get_quarterly_sppd.return_value = _scan_to_quarterly_sppd(watchlist_scan_df)
 
@@ -246,13 +257,13 @@ class TestBuildAtRiskData:
         assert row["signal"] == "Trend"
 
     def test_healthy_sku_excluded(
-        self, at_risk_scan_df, sample_stores_df, sample_benchmarks_df, multi_product_df, default_filters
+        self, at_risk_scan_df, sample_stores_df, multi_product_df, default_filters
     ):
         """SKU above median + rising/flat → excluded from all tiers."""
         with patch("app.db", create=True) as mock_db:
             mock_db.get_scan_data_agg.return_value = _agg_scan(at_risk_scan_df)
             mock_db.get_stores.return_value = sample_stores_df
-            mock_db.get_benchmarks.return_value = sample_benchmarks_df
+            mock_db.get_category_median_sppd.return_value = _category_median(at_risk_scan_df, multi_product_df)
             mock_db.get_products.return_value = multi_product_df
             mock_db.get_quarterly_sppd.return_value = _scan_to_quarterly_sppd(at_risk_scan_df)
 
@@ -267,13 +278,13 @@ class TestBuildAtRiskData:
         assert "SAFE-001" not in all_skus
 
     def test_act_now_sorted_worst_first(
-        self, at_risk_scan_df, sample_stores_df, sample_benchmarks_df, multi_product_df, default_filters
+        self, at_risk_scan_df, sample_stores_df, multi_product_df, default_filters
     ):
         """Act-now items are sorted by velocity gap ascending (worst first)."""
         with patch("app.db", create=True) as mock_db:
             mock_db.get_scan_data_agg.return_value = _agg_scan(at_risk_scan_df)
             mock_db.get_stores.return_value = sample_stores_df
-            mock_db.get_benchmarks.return_value = sample_benchmarks_df
+            mock_db.get_category_median_sppd.return_value = _category_median(at_risk_scan_df, multi_product_df)
             mock_db.get_products.return_value = multi_product_df
             mock_db.get_quarterly_sppd.return_value = _scan_to_quarterly_sppd(at_risk_scan_df)
 
@@ -287,7 +298,7 @@ class TestBuildAtRiskData:
         with patch("app.db", create=True) as mock_db:
             mock_db.get_scan_data_agg.return_value = pd.DataFrame()
             mock_db.get_stores.return_value = pd.DataFrame()
-            mock_db.get_benchmarks.return_value = pd.DataFrame()
+            mock_db.get_category_median_sppd.return_value = pd.DataFrame()
             mock_db.get_products.return_value = pd.DataFrame()
             mock_db.get_quarterly_sppd.return_value = pd.DataFrame()
 
@@ -298,12 +309,12 @@ class TestBuildAtRiskData:
         assert summary == {}
 
     def test_summary_has_tier_counts(
-        self, at_risk_scan_df, sample_stores_df, sample_benchmarks_df, multi_product_df, default_filters
+        self, at_risk_scan_df, sample_stores_df, multi_product_df, default_filters
     ):
         with patch("app.db", create=True) as mock_db:
             mock_db.get_scan_data_agg.return_value = _agg_scan(at_risk_scan_df)
             mock_db.get_stores.return_value = sample_stores_df
-            mock_db.get_benchmarks.return_value = sample_benchmarks_df
+            mock_db.get_category_median_sppd.return_value = _category_median(at_risk_scan_df, multi_product_df)
             mock_db.get_products.return_value = multi_product_df
             mock_db.get_quarterly_sppd.return_value = _scan_to_quarterly_sppd(at_risk_scan_df)
 
@@ -316,14 +327,14 @@ class TestBuildAtRiskData:
             assert "total_at_risk_dollars" in summary
 
     def test_signal_column_present(
-        self, at_risk_scan_df, sample_stores_df, sample_benchmarks_df, multi_product_df, default_filters
+        self, at_risk_scan_df, sample_stores_df, multi_product_df, default_filters
     ):
         """Each row has a signal column with valid label."""
         valid_signals = {"Level", "Trend", "Level + Trend"}
         with patch("app.db", create=True) as mock_db:
             mock_db.get_scan_data_agg.return_value = _agg_scan(at_risk_scan_df)
             mock_db.get_stores.return_value = sample_stores_df
-            mock_db.get_benchmarks.return_value = sample_benchmarks_df
+            mock_db.get_category_median_sppd.return_value = _category_median(at_risk_scan_df, multi_product_df)
             mock_db.get_products.return_value = multi_product_df
             mock_db.get_quarterly_sppd.return_value = _scan_to_quarterly_sppd(at_risk_scan_df)
 
@@ -335,7 +346,7 @@ class TestBuildAtRiskData:
                 for sig in df["signal"].values:
                     assert sig in valid_signals
 
-    def test_limited_history_flagged(self, sample_stores_df, sample_benchmarks_df, default_filters):
+    def test_limited_history_flagged(self, sample_stores_df, default_filters):
         """SKU with fewer than 4 quarters flagged as limited history."""
         # Only 2 quarters of data.
         rows = []
@@ -359,7 +370,7 @@ class TestBuildAtRiskData:
         with patch("app.db", create=True) as mock_db:
             mock_db.get_scan_data_agg.return_value = _agg_scan(scan_df)
             mock_db.get_stores.return_value = sample_stores_df
-            mock_db.get_benchmarks.return_value = sample_benchmarks_df
+            mock_db.get_category_median_sppd.return_value = _category_median(scan_df, products_df)
             mock_db.get_products.return_value = products_df
             mock_db.get_quarterly_sppd.return_value = _scan_to_quarterly_sppd(scan_df)
 
@@ -375,7 +386,7 @@ class TestBuildAtRiskData:
 
 
 class TestTierConsistency:
-    def test_scoring_matches_calculations(self, sample_stores_df, sample_benchmarks_df, default_filters):
+    def test_scoring_matches_calculations(self, sample_stores_df, default_filters):
         """Tier assignments match calculate_at_risk_score for same inputs."""
         from app.calculations import (
             calculate_at_risk_score,
@@ -405,14 +416,15 @@ class TestTierConsistency:
 
         days = days_in_quarter_range("Q1 2025", "Q1 2025")
         sppd_df = calculate_sppd(scan_df, days)
-        indexed_df = calculate_indexed_sppd(sppd_df, sample_benchmarks_df, products_df)
+        category_median_df = _category_median(scan_df, products_df, days)
+        indexed_df = calculate_indexed_sppd(sppd_df, category_median_df, products_df)
         trend_df = calculate_velocity_trend(scan_df, products_df)
         direct_scored = calculate_at_risk_score(indexed_df, trend_df)
 
         with patch("app.db", create=True) as mock_db:
             mock_db.get_scan_data_agg.return_value = _agg_scan(scan_df)
             mock_db.get_stores.return_value = sample_stores_df
-            mock_db.get_benchmarks.return_value = sample_benchmarks_df
+            mock_db.get_category_median_sppd.return_value = _category_median(scan_df, products_df)
             mock_db.get_products.return_value = products_df
             mock_db.get_quarterly_sppd.return_value = _scan_to_quarterly_sppd(scan_df)
 

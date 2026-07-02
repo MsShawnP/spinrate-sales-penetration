@@ -7,6 +7,7 @@ import pytest
 from app.calculations import (
     calculate_acv_pct,
     calculate_at_risk_score,
+    calculate_category_median_sppd,
     calculate_expansion_upside,
     calculate_indexed_sppd,
     calculate_sppd,
@@ -97,57 +98,111 @@ class TestCalculateAcvPct:
         assert result.empty
 
 
+# ── Category median SPPD (full-dataset benchmark) ───────────────────
+
+
+class TestCalculateCategoryMedianSppd:
+    """Category median SPPD, computed from the full unfiltered dataset."""
+
+    def test_median_per_product_line(self, sample_products_df):
+        """Median is computed independently per product line."""
+        full_sppd_df = pd.DataFrame([
+            {"sku": "CHP-AS-001", "sppd": 0.5},
+            {"sku": "CHP-AS-002", "sppd": 1.0},
+            {"sku": "CHP-PS-001", "sppd": 0.3},
+        ])
+        result = calculate_category_median_sppd(full_sppd_df, sample_products_df)
+        as_row = result[result["product_line"] == "Artisan Sauces"].iloc[0]
+        ps_row = result[result["product_line"] == "Pantry Staples"].iloc[0]
+        assert pytest.approx(as_row["category_median_sppd"], abs=0.001) == 0.75
+        assert pytest.approx(ps_row["category_median_sppd"], abs=0.001) == 0.3
+
+    def test_empty_input(self, sample_products_df):
+        """Empty SPPD DataFrame returns empty result with correct columns."""
+        empty = pd.DataFrame(columns=["sku", "sppd"])
+        result = calculate_category_median_sppd(empty, sample_products_df)
+        assert result.empty
+        assert list(result.columns) == ["product_line", "category_median_sppd"]
+
+
 # ── Indexed SPPD ────────────────────────────────────────────────────
 
 
 class TestCalculateIndexedSppd:
-    """Indexed SPPD = item SPPD / category median SPPD."""
+    """Indexed SPPD = item SPPD / category median SPPD (full-dataset benchmark)."""
 
-    def test_double_median(self, sample_scan_df, sample_benchmarks_df, sample_products_df):
-        """If one SKU has 2x the category median SPPD, index = 2.0."""
-        sppd_df = calculate_sppd(sample_scan_df, 91)
+    def test_double_median(self, sample_products_df):
+        """If a SKU has 2x the category median SPPD, index = 2.0."""
+        category_median_df = pd.DataFrame([
+            {"product_line": "Artisan Sauces", "category_median_sppd": 0.5},
+        ])
+        sppd_df = pd.DataFrame([{"sku": "CHP-AS-002", "sppd": 1.0}])
 
-        # Manually check: CHP-AS-001 sppd ~ 0.11, CHP-AS-002 sppd ~ 1.10.
-        # Category median for Artisan Sauces = median(0.11, 1.10) = 0.605.
-        # CHP-AS-002 indexed = 1.10 / 0.605 ~ 1.82.
+        result = calculate_indexed_sppd(sppd_df, category_median_df, sample_products_df)
+        row = result[result["sku"] == "CHP-AS-002"].iloc[0]
+        assert pytest.approx(row["indexed_sppd"], abs=0.001) == 2.0
 
-        result = calculate_indexed_sppd(sppd_df, sample_benchmarks_df, sample_products_df)
-        assert not result.empty
-        assert "indexed_sppd" in result.columns
+    def test_lone_sku_not_forced_to_one(self, sample_products_df):
+        """A lone SKU in a filtered selection must NOT trivially index to 1.0.
 
-        # Both Artisan Sauces SKUs should have the same median.
-        as_rows = result[result["product_line"] == "Artisan Sauces"]
-        assert len(as_rows) == 2
-        # Median is computed from actual data, so both share it.
-        assert as_rows["category_median_sppd"].nunique() == 1
+        Regression test for the bug where the benchmark was derived from
+        the filtered sppd_df itself -- a lone SKU was always its own
+        median. The benchmark here comes from the full dataset (0.5),
+        independent of what's in the filtered sppd_df (only one SKU).
+        """
+        category_median_df = pd.DataFrame([
+            {"product_line": "Artisan Sauces", "category_median_sppd": 0.5},
+        ])
+        filtered_sppd_df = pd.DataFrame([{"sku": "CHP-AS-001", "sppd": 0.1}])
 
-    def test_single_sku_in_category(self, sample_benchmarks_df, sample_products_df):
-        """Single SKU in a category: indexed SPPD = 1.0 (it IS the median)."""
-        single_sppd = pd.DataFrame([{"sku": "CHP-PS-001", "sppd": 0.5}])
-        result = calculate_indexed_sppd(single_sppd, sample_benchmarks_df, sample_products_df)
-        row = result[result["sku"] == "CHP-PS-001"].iloc[0]
-        assert pytest.approx(row["indexed_sppd"], abs=0.001) == 1.0
+        result = calculate_indexed_sppd(filtered_sppd_df, category_median_df, sample_products_df)
+        row = result[result["sku"] == "CHP-AS-001"].iloc[0]
+        assert pytest.approx(row["indexed_sppd"], abs=0.001) == 0.2
+        assert row["indexed_sppd"] != 1.0
 
-    def test_empty_input(self, sample_benchmarks_df, sample_products_df):
-        """Empty SPPD DataFrame returns empty result."""
-        empty = pd.DataFrame(columns=["sku", "sppd"])
-        result = calculate_indexed_sppd(empty, sample_benchmarks_df, sample_products_df)
-        assert result.empty
+    def test_filter_independent(self, sample_products_df):
+        """Same SKU indexes to the same value regardless of what else is
+        in the filtered selection, as long as the (full-dataset) benchmark
+        is unchanged."""
+        category_median_df = pd.DataFrame([
+            {"product_line": "Artisan Sauces", "category_median_sppd": 0.5},
+        ])
 
-    def test_no_benchmarks_for_category(self, sample_products_df):
-        """Category with no benchmarks: indexed SPPD is still computed from peers."""
+        # "Filtered to one retailer": only CHP-AS-001 present.
+        narrow_selection = pd.DataFrame([{"sku": "CHP-AS-001", "sppd": 0.25}])
+        # "Filtered to all retailers": both Artisan Sauces SKUs present.
+        wide_selection = pd.DataFrame([
+            {"sku": "CHP-AS-001", "sppd": 0.25},
+            {"sku": "CHP-AS-002", "sppd": 5.0},
+        ])
+
+        narrow_result = calculate_indexed_sppd(narrow_selection, category_median_df, sample_products_df)
+        wide_result = calculate_indexed_sppd(wide_selection, category_median_df, sample_products_df)
+
+        narrow_val = narrow_result[narrow_result["sku"] == "CHP-AS-001"].iloc[0]["indexed_sppd"]
+        wide_val = wide_result[wide_result["sku"] == "CHP-AS-001"].iloc[0]["indexed_sppd"]
+        assert pytest.approx(narrow_val, abs=0.001) == pytest.approx(wide_val, abs=0.001)
+
+    def test_no_benchmark_for_category_is_nan(self, sample_products_df):
+        """SKU whose product line has no benchmark: indexed SPPD is NaN,
+        not silently defaulted or computed from peers."""
         sppd_df = pd.DataFrame([
             {"sku": "CHP-AS-001", "sppd": 0.5},
             {"sku": "CHP-AS-002", "sppd": 1.0},
         ])
-        # Empty benchmarks -- but indexed SPPD uses peer medians, not benchmarks.
-        empty_benchmarks = pd.DataFrame(columns=[
-            "product_line", "avg_weekly_units_per_store",
-        ])
-        result = calculate_indexed_sppd(sppd_df, empty_benchmarks, sample_products_df)
-        # Should still work because medians are computed from sppd_df itself.
+        empty_benchmark = pd.DataFrame(columns=["product_line", "category_median_sppd"])
+        result = calculate_indexed_sppd(sppd_df, empty_benchmark, sample_products_df)
         assert len(result) == 2
-        assert result["indexed_sppd"].notna().all()
+        assert result["indexed_sppd"].isna().all()
+
+    def test_empty_input(self, sample_products_df):
+        """Empty SPPD DataFrame returns empty result."""
+        empty = pd.DataFrame(columns=["sku", "sppd"])
+        category_median_df = pd.DataFrame([
+            {"product_line": "Artisan Sauces", "category_median_sppd": 0.5},
+        ])
+        result = calculate_indexed_sppd(empty, category_median_df, sample_products_df)
+        assert result.empty
 
 
 # ── Velocity trend ──────────────────────────────────────────────────

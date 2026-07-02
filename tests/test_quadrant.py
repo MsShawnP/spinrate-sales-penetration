@@ -8,7 +8,12 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
-from app.calculations import calculate_acv_pct, calculate_sppd, classify_quadrant
+from app.calculations import (
+    calculate_acv_pct,
+    calculate_category_median_sppd,
+    calculate_sppd,
+    classify_quadrant,
+)
 from app.views.quadrant import (
     LOW_DOOR_THRESHOLD,
     _build_empty_figure,
@@ -455,7 +460,8 @@ class TestIndexedSPPDToggle:
 
         # Compute indexed SPPD.
         from app.calculations import calculate_indexed_sppd
-        indexed_df = calculate_indexed_sppd(sppd_df, sample_benchmarks_df, sample_products_df)
+        category_median_df = calculate_category_median_sppd(sppd_df, sample_products_df)
+        indexed_df = calculate_indexed_sppd(sppd_df, category_median_df, sample_products_df)
         chart_df = chart_df.merge(indexed_df[["sku", "indexed_sppd"]], on="sku", how="left")
         chart_df["indexed_sppd"] = chart_df["indexed_sppd"].fillna(1.0)
 

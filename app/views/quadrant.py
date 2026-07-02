@@ -166,6 +166,7 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
                 ),
                 hovertext=_hover_text(normal),
                 hoverinfo="text",
+                legendgroup=pl,
                 showlegend=True,
             ))
 
@@ -192,7 +193,12 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
                 ),
                 hovertext=_hover_text(low_door),
                 hoverinfo="text",
-                showlegend=True,
+                legendgroup=pl,
+                # Fold low-door markers into the product line's legend entry so
+                # each line contributes ONE entry (halves entry count → no wrap
+                # overflow). Only surface separately if the line has no normal
+                # markers, so a line is never dropped from the legend.
+                showlegend=normal.empty,
             ))
 
     # Quadrant dividing lines — add as shapes directly to avoid empty annotations.
@@ -276,14 +282,15 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
         legend=dict(
             orientation="h",
             yanchor="top",
-            y=-0.12,
+            y=-0.14,
             xanchor="left",
             x=0,
             font=dict(family=FONT_SANS, size=12, color=TEXT_SECONDARY),
             bgcolor="rgba(0,0,0,0)",
-            entrywidth=180,
-            entrywidthmode="pixels",
-            tracegroupgap=0,
+            # No fixed entrywidth: forcing 180px per entry made long labels
+            # spill past the right/field boundary instead of wrapping. Letting
+            # Plotly size each entry to its label lets the row wrap cleanly.
+            tracegroupgap=8,
         ),
     )
 
@@ -546,7 +553,7 @@ def register_callbacks():
             scan_agg = db.get_scan_data_agg(filters)
             dist_df = db.get_distribution(filters)
             stores_df = db.get_stores()
-            benchmarks_df = db.get_benchmarks()
+            category_median_df = db.get_category_median_sppd()
             products_df = db.get_products()
         except Exception:
             logger.exception("Quadrant chart callback failed")
@@ -581,8 +588,8 @@ def register_callbacks():
             return _build_empty_figure(), []
 
         # Indexed SPPD.
-        if indexed_mode and not products_df.empty and not benchmarks_df.empty:
-            indexed_df = calculate_indexed_sppd(sppd_df, benchmarks_df, products_df)
+        if indexed_mode and not products_df.empty and not category_median_df.empty:
+            indexed_df = calculate_indexed_sppd(sppd_df, category_median_df, products_df)
             chart_df = chart_df.merge(
                 indexed_df[["sku", "indexed_sppd"]], on="sku", how="left"
             )
@@ -641,7 +648,7 @@ def register_callbacks():
             scan_agg = db.get_scan_data_agg(filters)
             dist_df = db.get_distribution(filters)
             stores_df = db.get_stores()
-            benchmarks_df = db.get_benchmarks()
+            category_median_df = db.get_category_median_sppd()
             products_df = db.get_products()
         except Exception:
             logger.exception("Quadrant detail card callback failed")
@@ -678,8 +685,8 @@ def register_callbacks():
         if not sppd_df.empty and not acv_df.empty:
             merged = sppd_df.merge(acv_df[["sku", "acv_pct"]], on="sku", how="inner")
 
-            if indexed_mode and not benchmarks_df.empty and not products_df.empty:
-                indexed_df = calculate_indexed_sppd(sppd_df, benchmarks_df, products_df)
+            if indexed_mode and not category_median_df.empty and not products_df.empty:
+                indexed_df = calculate_indexed_sppd(sppd_df, category_median_df, products_df)
                 sku_indexed = indexed_df[indexed_df["sku"] == selected_sku]
                 y_val = sku_indexed["indexed_sppd"].iloc[0] if not sku_indexed.empty else sppd_val
                 med_sppd = 1.0

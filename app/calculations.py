@@ -132,27 +132,64 @@ def calculate_acv_pct(dist_df, stores_df):
 
 # ── Indexed SPPD ────────────────────────────────────────────────────
 
-def calculate_indexed_sppd(sppd_df, benchmarks_df, products_df):
+def calculate_category_median_sppd(full_sppd_df, products_df):
+    """Category median SPPD per product line, from the FULL dataset.
+
+    This must be computed over the entire, unfiltered dataset (not the
+    user's current retailer/region/date selection) so the benchmark is a
+    fixed point of comparison -- a SKU's indexed value doesn't shift
+    depending on what else happens to be in the filtered view, and a lone
+    SKU in a filtered selection doesn't trivially index to 1.0.
+
+    Parameters
+    ----------
+    full_sppd_df : DataFrame
+        SPPD computed over the full, unfiltered dataset. Must contain:
+        sku, sppd.
+    products_df : DataFrame
+        SKU -> product_line mapping. Must contain: sku, product_line.
+
+    Returns
+    -------
+    DataFrame with columns: product_line, category_median_sppd.
+    """
+    if full_sppd_df.empty or products_df.empty:
+        return pd.DataFrame(columns=["product_line", "category_median_sppd"])
+
+    merged = full_sppd_df[["sku", "sppd"]].merge(
+        products_df[["sku", "product_line"]], on="sku", how="left"
+    )
+    medians = merged.groupby("product_line")["sppd"].median().reset_index()
+    medians.columns = ["product_line", "category_median_sppd"]
+    return medians
+
+
+def calculate_indexed_sppd(sppd_df, category_median_df, products_df):
     """Calculate indexed SPPD: item SPPD / category median SPPD.
 
-    Since dim_category_benchmarks only has avg_weekly_units_per_store
-    (not a true SPPD median), we compute per-SKU medians from the sppd_df
-    itself, grouped by product_line.
+    category_median_df must come from calculate_category_median_sppd()
+    over the FULL, unfiltered dataset -- not derived from sppd_df itself.
+    Otherwise the "benchmark" is just the current filter selection's own
+    median, which moves every time the filter changes and always sits a
+    lone SKU at exactly 1.0.
 
     Parameters
     ----------
     sppd_df : DataFrame
-        Output of calculate_sppd().  Must contain: sku, sppd.
-    benchmarks_df : DataFrame
-        Category benchmarks.  Must contain: product_line,
-        avg_weekly_units_per_store.
+        SPPD for the current (possibly filtered) selection. Output of
+        calculate_sppd() / calculate_sppd_from_agg(). Must contain: sku,
+        sppd.
+    category_median_df : DataFrame
+        Output of calculate_category_median_sppd(). Must contain:
+        product_line, category_median_sppd.
     products_df : DataFrame
-        SKU -> product_line mapping.  Must contain: sku, product_line.
+        SKU -> product_line mapping. Must contain: sku, product_line.
 
     Returns
     -------
     DataFrame with columns: sku, product_line, sppd, category_median_sppd,
-    indexed_sppd.
+    indexed_sppd. A SKU whose product line has no benchmark gets NaN
+    indexed_sppd (excluded from at-risk flagging) rather than a default.
     """
     if sppd_df.empty or products_df.empty:
         return pd.DataFrame(
@@ -162,14 +199,10 @@ def calculate_indexed_sppd(sppd_df, benchmarks_df, products_df):
     merged = sppd_df[["sku", "sppd"]].merge(
         products_df[["sku", "product_line"]], on="sku", how="left"
     )
+    result = merged.merge(category_median_df, on="product_line", how="left")
 
-    # Compute category median SPPD from actual SKU-level data.
-    medians = merged.groupby("product_line")["sppd"].median().reset_index()
-    medians.columns = ["product_line", "category_median_sppd"]
-
-    result = merged.merge(medians, on="product_line", how="left")
-
-    # Guard against division by zero for categories with no median.
+    # NaN when no benchmark exists for the product line, or the benchmark
+    # is non-positive -- never silently defaults to a quadrant/tier.
     result["indexed_sppd"] = np.where(
         result["category_median_sppd"] > 0,
         result["sppd"] / result["category_median_sppd"],
