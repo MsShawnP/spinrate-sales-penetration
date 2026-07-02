@@ -276,7 +276,9 @@ _COLUMN_DEFS = [
         "width": 130,
         "valueFormatter": {"function": "d3.format('+.1%')(params.value)"},
         "headerTooltip": "Indexed SPPD gap vs. the category median (1.0).",
-        "sort": "asc",
+        # No default column sort: the rows arrive pre-sorted by tier priority
+        # (Act Now → Fix or Rationalize → others), worst gap first within each
+        # tier. A column sort here would override that and bury the red items.
     },
 ]
 
