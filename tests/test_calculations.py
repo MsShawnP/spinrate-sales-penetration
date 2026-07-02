@@ -462,11 +462,37 @@ class TestCalculateAtRiskScore:
 class TestCalculateExpansionUpside:
     """Expansion projections at median, 75th percentile, and leader."""
 
-    def test_projections_monotonically_increasing(
+    def test_projections_strictly_increase_for_a_below_median_sku(
         self, sample_scan_df, sample_dist_df, sample_stores_df,
         sample_products_df, sample_benchmarks_df,
     ):
-        """Median <= P75 <= Leader for dollar projections."""
+        """CHP-AS-001 (5 doors, below its product line's median/p75/leader of
+        7.5/8.75/10) must show real, strictly increasing dollar projections
+        -- not just non-decreasing ones. A regression that returned the same
+        (wrong) projection for all three targets would satisfy `<=` but
+        not the exact expected values asserted here.
+        """
+        sppd_df = calculate_sppd(sample_scan_df, 91)
+        result = calculate_expansion_upside(
+            sppd_df, sample_dist_df, sample_stores_df,
+            sample_products_df, sample_benchmarks_df,
+        )
+        row = result[result["sku"] == "CHP-AS-001"].iloc[0]
+
+        # incremental_units = (target_doors - current_doors) * current_sppd * 91
+        # incremental_dollars = incremental_units * wholesale_price ($5.00)
+        assert pytest.approx(row["upside_median_dollars"], abs=0.01) == 125.0
+        assert pytest.approx(row["upside_p75_dollars"], abs=0.01) == 187.5
+        assert pytest.approx(row["upside_leader_dollars"], abs=0.01) == 250.0
+        assert row["upside_median_dollars"] < row["upside_p75_dollars"] < row["upside_leader_dollars"]
+
+    def test_projections_never_decrease(
+        self, sample_scan_df, sample_dist_df, sample_stores_df,
+        sample_products_df, sample_benchmarks_df,
+    ):
+        """Median <= P75 <= Leader holds as a structural invariant across
+        every row, including SKUs already at their category leader (where
+        all three legitimately tie at 0)."""
         sppd_df = calculate_sppd(sample_scan_df, 91)
         result = calculate_expansion_upside(
             sppd_df, sample_dist_df, sample_stores_df,

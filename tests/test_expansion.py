@@ -100,10 +100,22 @@ class TestBuildExpansionData:
 
     def test_projections_monotonically_increasing(self, mock_db_returns, default_filters):
         rows_df, _ = build_expansion_data(default_filters)
-        if not rows_df.empty:
-            for _, row in rows_df.iterrows():
-                assert row["upside_median_dollars"] <= row["upside_p75_dollars"]
-                assert row["upside_p75_dollars"] <= row["upside_leader_dollars"]
+        assert not rows_df.empty, "Expected CHP-AS-001 to appear as a hidden gem"
+        for _, row in rows_df.iterrows():
+            assert row["upside_median_dollars"] <= row["upside_p75_dollars"]
+            assert row["upside_p75_dollars"] <= row["upside_leader_dollars"]
+
+    def test_hidden_gem_has_strictly_increasing_projections(self, mock_db_returns, default_filters):
+        """CHP-AS-001 (5 doors, below its product line's median/p75/leader)
+        must show real, strictly increasing dollar projections -- a
+        regression that collapsed all three targets to the same value
+        would pass a bare `<=` check but not this one."""
+        rows_df, _ = build_expansion_data(default_filters)
+        row = rows_df[rows_df["sku"] == "CHP-AS-001"].iloc[0]
+        assert pytest.approx(row["upside_median_dollars"], abs=0.01) == 125.0
+        assert pytest.approx(row["upside_p75_dollars"], abs=0.01) == 187.5
+        assert pytest.approx(row["upside_leader_dollars"], abs=0.01) == 250.0
+        assert row["upside_median_dollars"] < row["upside_p75_dollars"] < row["upside_leader_dollars"]
 
     def test_sorted_by_median_upside_descending(self, mock_db_returns, default_filters):
         rows_df, _ = build_expansion_data(default_filters)

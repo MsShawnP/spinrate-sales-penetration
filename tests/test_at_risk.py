@@ -379,9 +379,10 @@ class TestBuildAtRiskData:
             at_risk_df, watchlist_df, _ = build_at_risk_data(default_filters)
 
         all_results = pd.concat([at_risk_df, watchlist_df], ignore_index=True) if not at_risk_df.empty or not watchlist_df.empty else pd.DataFrame()
-        if not all_results.empty and "SHORT-001" in all_results["sku"].values:
-            row = all_results[all_results["sku"] == "SHORT-001"].iloc[0]
-            assert row["limited_history"] == True  # noqa: E712 — numpy bool
+        assert not all_results.empty, "Expected SHORT-001 to be scored (below median, 2 quarters of data)"
+        assert "SHORT-001" in all_results["sku"].values, "SHORT-001 missing from at-risk/watchlist results"
+        row = all_results[all_results["sku"] == "SHORT-001"].iloc[0]
+        assert row["limited_history"] == True  # noqa: E712 — numpy bool
 
 
 # ── Tier scoring consistency with calculations.py ────────────────
@@ -434,11 +435,14 @@ class TestTierConsistency:
 
         all_view = pd.concat([at_risk_df, watchlist_df], ignore_index=True) if not at_risk_df.empty or not watchlist_df.empty else pd.DataFrame()
 
+        assert not direct_scored.empty, "Expected TEST-001 to be scored as fix_or_rationalize"
+        assert not all_view.empty, "Expected build_at_risk_data to return the same SKU"
+
         # Every SKU scored by calculations.py should appear in the view with same tier.
         for _, row in direct_scored.iterrows():
-            if not all_view.empty and row["sku"] in all_view["sku"].values:
-                view_row = all_view[all_view["sku"] == row["sku"]].iloc[0]
-                assert view_row["at_risk_tier"] == row["at_risk_tier"]
+            assert row["sku"] in all_view["sku"].values, f"{row['sku']} missing from view results"
+            view_row = all_view[all_view["sku"] == row["sku"]].iloc[0]
+            assert view_row["at_risk_tier"] == row["at_risk_tier"]
 
 
 # ── Layout structure ─────────────────────────────────────────────
