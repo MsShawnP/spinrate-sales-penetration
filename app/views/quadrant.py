@@ -119,6 +119,63 @@ def _hover_text(df):
     ]
 
 
+def _build_custom_legend(chart_df):
+    """Build a custom HTML legend below the chart, laid out as a 3-column
+    CSS grid (3 items per row) instead of Plotly's built-in SVG legend.
+
+    Plotly's native horizontal legend wraps by available width, not by a
+    fixed item count, and its wrap decisions come from a canvas-based
+    text measurement that doesn't reliably track async web-font loading
+    (Source Sans 3 loads via font-display: swap). A plain HTML/CSS grid
+    sidesteps that whole class of bug: normal DOM text reflows correctly
+    on any font swap, and grid-template-columns gives an exact,
+    deterministic item count per row regardless of label length or font
+    load timing.
+    """
+    if chart_df.empty:
+        return []
+
+    color_map = _assign_product_line_colors(chart_df["product_line"])
+    product_lines_sorted = sorted(chart_df["product_line"].unique())
+
+    items = [
+        html.Div(
+            [
+                html.Span(style={
+                    "display": "inline-block",
+                    "width": "10px",
+                    "height": "10px",
+                    "borderRadius": "50%",
+                    "backgroundColor": color_map[pl],
+                    "marginRight": "8px",
+                    "flexShrink": "0",
+                }),
+                html.Span(pl, style={"whiteSpace": "nowrap"}),
+            ],
+            style={
+                "display": "flex",
+                "alignItems": "center",
+                "fontFamily": FONT_SANS,
+                "fontSize": "12px",
+                "color": TEXT_SECONDARY,
+            },
+        )
+        for pl in product_lines_sorted
+    ]
+
+    return html.Div(
+        items,
+        style={
+            "display": "grid",
+            "gridTemplateColumns": "repeat(3, auto)",
+            "justifyContent": "center",
+            "columnGap": "24px",
+            "rowGap": "8px",
+            "marginTop": "12px",
+        },
+    )
+
+
 def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False):
     """Build the Plotly bubble scatter figure.
 
@@ -289,25 +346,11 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
             rangemode="tozero",
         ),
         annotations=quadrant_annotations,
-        margin=dict(l=70, r=20, t=70, b=100),
-        legend=dict(
-            orientation="h",
-            yanchor="top",
-            y=-0.14,
-            xanchor="left",
-            x=0,
-            font=dict(family=FONT_SANS, size=12, color=TEXT_SECONDARY),
-            bgcolor="rgba(0,0,0,0)",
-            # No fixed entrywidth: forcing 180px per entry made long labels
-            # spill past the right/field boundary instead of wrapping. Letting
-            # Plotly size each entry to its label lets the row wrap cleanly.
-            tracegroupgap=8,
-            # Constant swatch size: without this, legend swatches inherit
-            # each trace's per-point marker size (up to 45px for bubbles),
-            # rendering huge color dots that sit on top of the label text
-            # and inflate entry widths past the right edge.
-            itemsizing="constant",
-        ),
+        margin=dict(l=70, r=20, t=70, b=40),
+        # Plotly's own SVG legend is off -- rendered as a custom HTML/CSS
+        # grid instead (see _build_custom_legend / #quadrant-legend). See
+        # that function's docstring for why.
+        showlegend=False,
     )
 
     fig.update_layout(**layout)
@@ -473,6 +516,10 @@ def layout():
                 config=CHART_CONFIG,
                 style={"minHeight": "500px"},
             ),
+            # Custom HTML legend (3-column grid) -- populated by the same
+            # callback that builds the chart figure. Replaces Plotly's
+            # built-in SVG legend; see _build_custom_legend.
+            html.Div(id="quadrant-legend"),
             # Low-door marker style caption (legend no longer labels this
             # separately -- see the (low doors) trace in _build_quadrant_figure).
             html.P(
@@ -572,6 +619,7 @@ def register_callbacks():
     @callback(
         Output("quadrant-chart", "figure"),
         Output("quadrant-summary", "children"),
+        Output("quadrant-legend", "children"),
         Input("filter-state", "data"),
         Input("indexed-mode", "data"),
     )
@@ -591,10 +639,10 @@ def register_callbacks():
             products_df = db.get_products()
         except Exception:
             logger.exception("Quadrant chart callback failed")
-            return _build_empty_figure(), []
+            return _build_empty_figure(), [], []
 
         if scan_agg.empty or dist_df.empty:
-            return _build_empty_figure(), []
+            return _build_empty_figure(), [], []
 
         # Compute metrics.
         start_q = filters.get("start_quarter", "Q1 2025")
@@ -605,7 +653,7 @@ def register_callbacks():
         acv_df = calculate_acv_pct(dist_df, stores_df)
 
         if sppd_df.empty or acv_df.empty:
-            return _build_empty_figure(), []
+            return _build_empty_figure(), [], []
 
         # Merge SPPD + ACV + product info.
         chart_df = sppd_df.merge(acv_df[["sku", "acv_pct"]], on="sku", how="inner")
@@ -619,7 +667,7 @@ def register_callbacks():
         chart_df["total_dollars"] = chart_df["total_dollars"].fillna(0)
 
         if chart_df.empty:
-            return _build_empty_figure(), []
+            return _build_empty_figure(), [], []
 
         # Fixed dividing-line medians from the full unfiltered dataset, so
         # quadrant membership doesn't reshuffle when filters change.
@@ -665,7 +713,8 @@ def register_callbacks():
 
         fig = _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode)
         summary = _build_quadrant_summary(chart_df)
-        return fig, summary
+        legend = _build_custom_legend(chart_df)
+        return fig, summary, legend
 
     # Detail card callback — renders when selected-sku changes.
     @callback(

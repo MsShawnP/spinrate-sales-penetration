@@ -17,6 +17,7 @@ from app.calculations import (
 from app.views.quadrant import (
     INDEXED_SPPD_NOTE,
     LOW_DOOR_THRESHOLD,
+    _build_custom_legend,
     _build_empty_figure,
     _build_quadrant_figure,
     _scale_bubble_sizes,
@@ -211,14 +212,14 @@ class TestBuildQuadrantFigure:
         for label in QUADRANT_LABELS.values():
             assert label in annotation_texts, f"Missing quadrant label: {label}"
 
-    def test_legend_uses_constant_item_sizing(self, sample_chart_df):
-        """Legend swatches must not inherit per-point bubble marker size
-        (up to 45px) -- without itemsizing="constant" the color dots
-        render huge and sit on top of the label text, inflating entry
-        width so rows run off the right edge instead of wrapping."""
+    def test_plotly_legend_disabled(self, sample_chart_df):
+        """Plotly's built-in SVG legend must stay off -- the legend is a
+        custom HTML/CSS grid instead (see _build_custom_legend), which
+        sidesteps the web-font-load-race clipping bug Plotly's own
+        legend measurement is prone to."""
         chart_df, median_sppd, median_acv = sample_chart_df
         fig = _build_quadrant_figure(chart_df, median_sppd, median_acv)
-        assert fig.layout.legend.itemsizing == "constant"
+        assert fig.layout.showlegend is False
 
     def test_low_door_count_flagged(self, sample_chart_df):
         """SKUs below door threshold appear in a visually distinct (faded/
@@ -271,6 +272,46 @@ class TestBuildQuadrantFigure:
         fig = _build_quadrant_figure(chart_df, median_sppd, median_acv)
         for trace in fig.data:
             assert trace.mode == "markers"
+
+
+# ── Custom HTML legend ───────────────────────────────────────────
+
+
+class TestBuildCustomLegend:
+    """Custom HTML/CSS legend -- replaces Plotly's built-in SVG legend."""
+
+    def _five_line_chart_df(self):
+        product_lines = [
+            "Artisan Sauces", "Pantry Staples", "Specialty Condiments",
+            "Dry Goods", "Snack Bars",
+        ]
+        return pd.DataFrame([
+            {"sku": f"SKU-{i}", "product_line": pl}
+            for i, pl in enumerate(product_lines)
+        ])
+
+    def test_one_item_per_product_line(self):
+        chart_df = self._five_line_chart_df()
+        legend = _build_custom_legend(chart_df)
+        # legend.children is the list of per-product-line item Divs.
+        assert len(legend.children) == 5
+
+    def test_three_column_grid(self):
+        """Exactly 3 columns -- forces a deterministic 3+2 wrap for 5
+        items, independent of label length or container width."""
+        chart_df = self._five_line_chart_df()
+        legend = _build_custom_legend(chart_df)
+        assert legend.style["gridTemplateColumns"] == "repeat(3, auto)"
+        assert legend.style["display"] == "grid"
+
+    def test_empty_chart_df_returns_empty_list(self):
+        assert _build_custom_legend(pd.DataFrame()) == []
+
+    def test_items_sorted_alphabetically(self):
+        chart_df = self._five_line_chart_df()
+        legend = _build_custom_legend(chart_df)
+        labels = [item.children[1].children for item in legend.children]
+        assert labels == sorted(labels)
 
 
 # ── Empty figure ──────────────────────────────────────────────────
