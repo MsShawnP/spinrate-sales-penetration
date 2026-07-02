@@ -8,6 +8,8 @@ import pytest
 from app.calculations import calculate_category_median_sppd, calculate_sppd_from_agg
 from app.views.at_risk import (
     TIER_CONFIG,
+    WINDOW_NOTE,
+    _COLUMN_DEFS,
     build_at_risk_data,
     layout,
 )
@@ -473,8 +475,48 @@ class TestAtRiskLayout:
         ids = _collect_ids(result)
         assert "at-risk-summary" in ids
 
+    def test_layout_has_window_note(self):
+        """Layout surfaces the Level-vs-Trend window mismatch to the user."""
+        result = layout()
+        all_text = _collect_text(result)
+        assert any(WINDOW_NOTE in text for text in all_text)
+
+
+# ── Level vs Trend window disclosure ──────────────────────────────
+
+
+class TestWindowDisclosure:
+    """Trend uses a fixed 8-quarter window independent of the date filter;
+    Level uses the selected date range. This must stay disclosed, not
+    silently conflated."""
+
+    def test_indexed_sppd_column_has_window_tooltip(self):
+        col = next(c for c in _COLUMN_DEFS if c["field"] == "indexed_sppd")
+        assert "headerTooltip" in col
+        assert "date-range filter" in col["headerTooltip"]
+
+    def test_trend_column_has_window_tooltip(self):
+        col = next(c for c in _COLUMN_DEFS if c["field"] == "trend")
+        assert "headerTooltip" in col
+        assert "8 quarters" in col["headerTooltip"]
+        assert "independent" in col["headerTooltip"]
+
 
 # ── Helpers ──────────────────────────────────────────────────────
+
+
+def _collect_text(component):
+    """Recursively collect all string children from a Dash layout tree."""
+    texts = []
+    children = getattr(component, "children", None)
+    if isinstance(children, str):
+        texts.append(children)
+    elif isinstance(children, (list, tuple)):
+        for child in children:
+            texts.extend(_collect_text(child))
+    elif children is not None:
+        texts.extend(_collect_text(children))
+    return texts
 
 
 def _collect_ids(component):

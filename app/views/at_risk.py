@@ -75,6 +75,19 @@ TIER_CONFIG = {
     },
 }
 
+# Level and Trend cover different time windows by design: Level (Indexed
+# SPPD) uses the date range selected in the filter bar; Trend uses a fixed
+# trailing 8 quarters regardless of that filter, because a slope needs
+# enough history to be meaningful. A tier like Act Now can therefore
+# combine a narrow snapshot with a two-year trend -- surfaced here so it
+# isn't silently conflated.
+WINDOW_NOTE = (
+    "Level (Indexed SPPD) reflects the date range selected above. "
+    "Trend is a long-run signal — the trailing 8 quarters, independent of "
+    "that date filter — because a velocity slope needs history to be "
+    "meaningful. The two can span different periods."
+)
+
 
 # ── Data assembly ────────────────────────────────────────────────
 
@@ -229,6 +242,7 @@ _COLUMN_DEFS = [
         "headerName": "Idx SPPD",
         "width": 90,
         "valueFormatter": {"function": "d3.format('.2f')(params.value)"},
+        "headerTooltip": "Level: computed over the selected date-range filter.",
     },
     {
         "field": "trend",
@@ -241,6 +255,7 @@ _COLUMN_DEFS = [
                     ? {color: '#158f75'}
                     : {}
         """},
+        "headerTooltip": "Trend: trailing 8 quarters, independent of the date-range filter.",
     },
     {
         "field": "sppd",
@@ -275,6 +290,12 @@ def layout():
             html.Div(id="at-risk-summary"),
             # Annotation callout area.
             html.Div(id="at-risk-annotation"),
+            # Level vs Trend window note — the two signals cover different
+            # time periods by design; see WINDOW_NOTE for rationale.
+            html.P(
+                WINDOW_NOTE,
+                className="formula-note",
+            ),
             # At-risk section (act now + fix or rationalize).
             html.Div(
                 [
