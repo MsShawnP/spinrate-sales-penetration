@@ -148,7 +148,9 @@ def hero_card(value, label, accent=None):
         "background": WHITE,
         "border": f"1px solid {GRIDLINE}",
         "borderRadius": "2px",
-        "padding": "20px 24px",
+        # Spacing-scale "lg" token (24px) on all sides -- 20px vertical
+        # wasn't a documented spacing token.
+        "padding": "24px",
         "minWidth": "180px",
         "flex": "1",
     }
@@ -177,7 +179,9 @@ def hero_card(value, label, accent=None):
                     "fontWeight": "600",
                     "color": TEXT_SECONDARY,
                     "display": "block",
-                    "marginTop": "6px",
+                    # Spacing-scale "sm" token (8px) -- 6px wasn't a
+                    # documented spacing token.
+                    "marginTop": "8px",
                 },
             ),
         ],
