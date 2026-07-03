@@ -2,6 +2,10 @@ FROM python:3.11-slim AS base
 
 WORKDIR /app
 
+# Install vendored packages first (change less often)
+COPY packages/lailara-palette/ /app/packages/lailara-palette/
+RUN pip install --no-cache-dir /app/packages/lailara-palette/
+
 # Install app dependencies
 COPY pyproject.toml /app/
 RUN pip install --no-cache-dir .

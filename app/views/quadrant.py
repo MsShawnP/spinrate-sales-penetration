@@ -38,10 +38,10 @@ from app.constants import (
     GRIDLINE,
     INFO_BG,
     INK,
+    PRODUCT_LINE_COLORS,
     QUADRANT_LABELS,
     REFERENCE,
     SPPD_FORMULA,
-    TEAL_SEQUENTIAL,
     TEXT_SECONDARY,
     WHITE,
     fmt_dollars,
@@ -83,26 +83,27 @@ def _scale_bubble_sizes(dollars_series):
     max_val = sqrt_vals.max()
 
     if max_val == min_val:
-        return pd.Series(_BUBBLE_SIZE_MIN + (_BUBBLE_SIZE_MAX - _BUBBLE_SIZE_MIN) / 2,
-                         index=dollars_series.index)
+        return pd.Series(
+            _BUBBLE_SIZE_MIN + (_BUBBLE_SIZE_MAX - _BUBBLE_SIZE_MIN) / 2, index=dollars_series.index
+        )
 
     normalized = (sqrt_vals - min_val) / (max_val - min_val)
     return _BUBBLE_SIZE_MIN + normalized * (_BUBBLE_SIZE_MAX - _BUBBLE_SIZE_MIN)
 
 
 def _assign_product_line_colors(product_lines):
-    """Map unique product lines to Hong Kong teal sequential palette colors.
+    """Map unique product lines to the categorical palette.
 
-    Darkest teal (HK_5) goes to the first product line alphabetically,
-    lightest to the last, cycling if more lines than palette entries.
+    Five visually distinct hues (Chicago, HK, Singapore families —
+    no Red or Tokyo) assigned alphabetically. Cycles if more lines
+    than palette entries.
     """
     unique_lines = sorted(product_lines.unique())
-    palette = TEAL_SEQUENTIAL
+    palette = PRODUCT_LINE_COLORS
     color_map = {}
     for i, pl in enumerate(unique_lines):
         color_map[pl] = palette[i % len(palette)]
     return color_map
-
 
 
 def _hover_text(df):
@@ -141,15 +142,17 @@ def _build_custom_legend(chart_df):
     items = [
         html.Div(
             [
-                html.Span(style={
-                    "display": "inline-block",
-                    "width": "10px",
-                    "height": "10px",
-                    "borderRadius": "50%",
-                    "backgroundColor": color_map[pl],
-                    "marginRight": "8px",
-                    "flexShrink": "0",
-                }),
+                html.Span(
+                    style={
+                        "display": "inline-block",
+                        "width": "10px",
+                        "height": "10px",
+                        "borderRadius": "50%",
+                        "backgroundColor": color_map[pl],
+                        "marginRight": "8px",
+                        "flexShrink": "0",
+                    }
+                ),
                 html.Span(pl, style={"whiteSpace": "nowrap"}),
             ],
             style={
@@ -209,77 +212,95 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
         low_door = pl_data[pl_data["door_count"] < LOW_DOOR_THRESHOLD]
 
         if not normal.empty:
-            fig.add_trace(go.Scatter(
-                x=normal["acv_pct"].tolist(),
-                y=normal[y_col].tolist(),
-                mode="markers",
-                name=pl,
-                customdata=np.stack([
-                    normal["sku"],
-                    normal["product_name"],
-                    normal["product_line"],
-                    normal["total_dollars"],
-                    normal["door_count"],
-                    normal["sppd"],
-                    normal["quadrant"],
-                ], axis=-1).tolist(),
-                marker=dict(
-                    size=normal["bubble_size"].tolist(),
-                    color=color,
-                    opacity=normal["opacity"].tolist(),
-                    line=dict(width=1, color=INK),
-                ),
-                hovertext=_hover_text(normal),
-                hoverinfo="text",
-                legendgroup=pl,
-                showlegend=True,
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=normal["acv_pct"].tolist(),
+                    y=normal[y_col].tolist(),
+                    mode="markers",
+                    name=pl,
+                    customdata=np.stack(
+                        [
+                            normal["sku"],
+                            normal["product_name"],
+                            normal["product_line"],
+                            normal["total_dollars"],
+                            normal["door_count"],
+                            normal["sppd"],
+                            normal["quadrant"],
+                        ],
+                        axis=-1,
+                    ).tolist(),
+                    marker=dict(
+                        size=normal["bubble_size"].tolist(),
+                        color=color,
+                        opacity=normal["opacity"].tolist(),
+                        line=dict(width=1, color=INK),
+                    ),
+                    hovertext=_hover_text(normal),
+                    hoverinfo="text",
+                    legendgroup=pl,
+                    showlegend=True,
+                )
+            )
 
         if not low_door.empty:
-            fig.add_trace(go.Scatter(
-                x=low_door["acv_pct"].tolist(),
-                y=low_door[y_col].tolist(),
-                mode="markers",
-                # No "(low doors)" suffix -- the low-door/normal split is
-                # communicated by the faded/dashed marker style plus the
-                # caption below the chart, not a separate legend label.
-                name=pl,
-                customdata=np.stack([
-                    low_door["sku"],
-                    low_door["product_name"],
-                    low_door["product_line"],
-                    low_door["total_dollars"],
-                    low_door["door_count"],
-                    low_door["sppd"],
-                    low_door["quadrant"],
-                ], axis=-1).tolist(),
-                marker=dict(
-                    size=low_door["bubble_size"].tolist(),
-                    color=color,
-                    opacity=0.4,
-                    line=dict(width=2, color=color, dash="dash"),
-                ),
-                hovertext=_hover_text(low_door),
-                hoverinfo="text",
-                legendgroup=pl,
-                # Fold low-door markers into the product line's legend entry so
-                # each line contributes ONE entry (halves entry count → no wrap
-                # overflow). Only surface separately if the line has no normal
-                # markers, so a line is never dropped from the legend.
-                showlegend=normal.empty,
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=low_door["acv_pct"].tolist(),
+                    y=low_door[y_col].tolist(),
+                    mode="markers",
+                    # No "(low doors)" suffix -- the low-door/normal split is
+                    # communicated by the faded/dashed marker style plus the
+                    # caption below the chart, not a separate legend label.
+                    name=pl,
+                    customdata=np.stack(
+                        [
+                            low_door["sku"],
+                            low_door["product_name"],
+                            low_door["product_line"],
+                            low_door["total_dollars"],
+                            low_door["door_count"],
+                            low_door["sppd"],
+                            low_door["quadrant"],
+                        ],
+                        axis=-1,
+                    ).tolist(),
+                    marker=dict(
+                        size=low_door["bubble_size"].tolist(),
+                        color=color,
+                        opacity=0.4,
+                        line=dict(width=2, color=color, dash="dash"),
+                    ),
+                    hovertext=_hover_text(low_door),
+                    hoverinfo="text",
+                    legendgroup=pl,
+                    # Fold low-door markers into the product line's legend entry so
+                    # each line contributes ONE entry (halves entry count → no wrap
+                    # overflow). Only surface separately if the line has no normal
+                    # markers, so a line is never dropped from the legend.
+                    showlegend=normal.empty,
+                )
+            )
 
     # Quadrant dividing lines — add as shapes directly to avoid empty annotations.
     fig.add_shape(
         type="line",
-        x0=0, x1=1, xref="paper",
-        y0=median_sppd, y1=median_sppd, yref="y",
+        x0=0,
+        x1=1,
+        xref="paper",
+        y0=median_sppd,
+        y1=median_sppd,
+        yref="y",
         line=dict(dash="dash", color=REFERENCE, width=2),
     )
     fig.add_shape(
         type="line",
-        x0=median_acv, x1=median_acv, xref="x",
-        y0=0, y1=1, yref="paper",
+        x0=median_acv,
+        x1=median_acv,
+        xref="x",
+        y0=0,
+        y1=1,
+        yref="paper",
         line=dict(dash="dash", color=REFERENCE, width=2),
     )
 
@@ -288,32 +309,40 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
     quadrant_annotations = [
         # Stars — top-right
         dict(
-            x=0.75, y=0.92,
-            xref="paper", yref="paper",
+            x=0.75,
+            y=0.92,
+            xref="paper",
+            yref="paper",
             text=QUADRANT_LABELS["star"],
             showarrow=False,
             font=dict(family=FONT_SANS, size=13, color=DISABLED),
         ),
         # Hidden Gems — top-left
         dict(
-            x=0.25, y=0.92,
-            xref="paper", yref="paper",
+            x=0.25,
+            y=0.92,
+            xref="paper",
+            yref="paper",
             text=QUADRANT_LABELS["hidden_gem"],
             showarrow=False,
             font=dict(family=FONT_SANS, size=13, color=DISABLED),
         ),
         # Wide but Dead — bottom-right
         dict(
-            x=0.75, y=0.08,
-            xref="paper", yref="paper",
+            x=0.75,
+            y=0.08,
+            xref="paper",
+            yref="paper",
             text=QUADRANT_LABELS["wide_but_dead"],
             showarrow=False,
             font=dict(family=FONT_SANS, size=13, color=DISABLED),
         ),
         # Question Marks — bottom-left
         dict(
-            x=0.25, y=0.08,
-            xref="paper", yref="paper",
+            x=0.25,
+            y=0.08,
+            xref="paper",
+            yref="paper",
             text=QUADRANT_LABELS["question_mark"],
             showarrow=False,
             font=dict(family=FONT_SANS, size=13, color=DISABLED),
@@ -362,13 +391,17 @@ def _build_empty_figure():
     """Return an empty figure with a 'no data' annotation."""
     fig = go.Figure()
     layout = economist_layout(
-        annotations=[dict(
-            text="No data matches the current filters.",
-            xref="paper", yref="paper",
-            x=0.5, y=0.5,
-            showarrow=False,
-            font=dict(family=FONT_SANS, size=17, color=TEXT_SECONDARY),
-        )],
+        annotations=[
+            dict(
+                text="No data matches the current filters.",
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=0.5,
+                showarrow=False,
+                font=dict(family=FONT_SANS, size=17, color=TEXT_SECONDARY),
+            )
+        ],
         xaxis=dict(visible=False),
         yaxis=dict(visible=False),
     )
@@ -681,9 +714,7 @@ def register_callbacks():
         # Indexed SPPD.
         if indexed_mode and not products_df.empty and not category_median_df.empty:
             indexed_df = calculate_indexed_sppd(sppd_df, category_median_df, products_df)
-            chart_df = chart_df.merge(
-                indexed_df[["sku", "indexed_sppd"]], on="sku", how="left"
-            )
+            chart_df = chart_df.merge(indexed_df[["sku", "indexed_sppd"]], on="sku", how="left")
             chart_df["indexed_sppd"] = chart_df["indexed_sppd"].fillna(1.0)
             median_sppd = 1.0  # Dividing line at index = 1.0
         else:
@@ -742,9 +773,14 @@ def register_callbacks():
             products_df = db.get_products()
         except Exception:
             logger.exception("Quadrant detail card callback failed")
-            return html.P("Could not load detail data.", style={
-                "color": TEXT_SECONDARY, "fontFamily": FONT_SANS, "fontSize": "14px",
-            })
+            return html.P(
+                "Could not load detail data.",
+                style={
+                    "color": TEXT_SECONDARY,
+                    "fontFamily": FONT_SANS,
+                    "fontSize": "14px",
+                },
+            )
 
         start_q = filters.get("start_quarter", "Q1 2025")
         end_q = filters.get("end_quarter", "Q4 2025")
@@ -755,7 +791,9 @@ def register_callbacks():
 
         # Get product info.
         product_row = products_df[products_df["sku"] == selected_sku]
-        product_name = product_row["product_name"].iloc[0] if not product_row.empty else selected_sku
+        product_name = (
+            product_row["product_name"].iloc[0] if not product_row.empty else selected_sku
+        )
         product_line = product_row["product_line"].iloc[0] if not product_row.empty else "Unknown"
 
         # SPPD for this SKU.
@@ -795,8 +833,9 @@ def register_callbacks():
             quadrant = "N/A"
 
         # Velocity trend from pre-aggregated quarterly SPPD.
-        trend_filters = {k: v for k, v in filters.items()
-                         if k not in ("start_quarter", "end_quarter")}
+        trend_filters = {
+            k: v for k, v in filters.items() if k not in ("start_quarter", "end_quarter")
+        }
         quarterly_sppd_df = db.get_quarterly_sppd(trend_filters)
         trend_df = calculate_velocity_trend_from_quarterly(quarterly_sppd_df)
         sku_trend = trend_df[trend_df["sku"] == selected_sku]

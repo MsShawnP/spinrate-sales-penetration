@@ -1,70 +1,114 @@
-"""Lailara design-system tokens and format helpers for Plotly/Dash charts."""
+"""Lailara design-system tokens and format helpers for Plotly/Dash charts.
+
+All color values are sourced from the lailara-palette package (the single source
+of truth). Spinrate re-exports them under short semantic aliases that the rest
+of the app imports.
+"""
 
 import math
 
+from lailara_palette import (
+    LL_CANVAS,
+    LL_CARD_BG,
+    LL_CARD_BORDER,
+    LL_CARD_ITEM,
+    LL_CARD_MUTED,
+    LL_CARD_SUBTITLE,
+    LL_CARD_TEXT,
+    LL_CAT_10,
+    LL_CHICAGO,
+    LL_CHICAGO_HOVER,
+    LL_CHICAGO_LIGHT,
+    LL_DISABLED,
+    LL_GRIDLINE,
+    LL_HK,
+    LL_HK_DARK,
+    LL_HK_LIGHT,
+    LL_HK_SURFACE,
+    LL_INK,
+    LL_NY,
+    LL_NY_SURFACE,
+    LL_RED,
+    LL_REFERENCE,
+    LL_SANS,
+    LL_SEQ,
+    LL_SERIF,
+    LL_SG,
+    LL_SG_DARK,
+    LL_SG_LIGHT,
+    LL_SG_SURFACE,
+    LL_STATUS,
+    LL_TEXT,
+    LL_TEXT_SEC,
+    LL_TOKYO,
+    LL_TOKYO_DARK,
+    LL_TOKYO_LIGHT,
+    LL_TOKYO_SURFACE,
+)
+
 # ── Canvas & London greyscale ──
 WHITE = "#ffffff"
-CANVAS = "#f5f3ee"
-TEXT_PRIMARY = "#333333"
-TEXT_SECONDARY = "#595959"
-GRIDLINE = "#d9d9d9"
-REFERENCE = "#666666"
-DISABLED = "#b3b3b3"
-INK = "#0d0d0d"
+CANVAS = LL_CANVAS
+TEXT_PRIMARY = LL_TEXT
+TEXT_SECONDARY = LL_TEXT_SEC
+GRIDLINE = LL_GRIDLINE
+REFERENCE = LL_REFERENCE
+DISABLED = LL_DISABLED
+INK = LL_INK
 
 # ── Chicago (accent blue) ──
-CHICAGO_20 = "#1f2e7a"
-CHICAGO_10 = "#141e52"
-CHICAGO_70 = "#8e9ad0"
+CHICAGO_20 = LL_CHICAGO
+CHICAGO_10 = LL_CHICAGO_HOVER
+CHICAGO_70 = LL_CHICAGO_LIGHT
 
 # ── Brand red ──
-RED_42 = "#cc100a"
+RED_42 = LL_RED
 
 # ── Hong Kong sequential teal ──
-HK_5 = "#063d32"
-HK_15 = "#0a5c4b"
-HK_25 = "#0e6e5a"
-HK_35 = "#158f75"
-HK_45 = "#1fa282"
-HK_55 = "#35b595"
-HK_70 = "#6dcdb5"
-HK_85 = "#b5e4d8"
-HK_95 = "#e4f5f0"
+HK_5 = LL_SEQ[0]
+HK_15 = LL_SEQ[1]
+HK_25 = LL_SEQ[2]
+HK_35 = LL_HK
+HK_45 = LL_SEQ[4]
+HK_55 = LL_SEQ[5]
+HK_70 = LL_HK_LIGHT
+HK_85 = LL_SEQ[7]
+HK_95 = LL_HK_SURFACE
 
 # ── Singapore (orange) ──
-SG_20 = "#7a3d10"
-SG_55 = "#ee8a2a"
-SG_70 = "#f6b97c"
-SG_95 = "#fdeee0"
+SG_20 = LL_SG_DARK
+SG_55 = LL_SG
+SG_70 = LL_SG_LIGHT
+SG_95 = LL_SG_SURFACE
 
 # ── Tokyo (berry/rose) ──
-TOKYO_20 = "#7e1f34"
-TOKYO_40 = "#b82d4a"
-TOKYO_70 = "#e68a9a"
-TOKYO_95 = "#fbe9ed"
+TOKYO_20 = LL_TOKYO_DARK
+TOKYO_40 = LL_TOKYO
+TOKYO_70 = LL_TOKYO_LIGHT
+TOKYO_95 = LL_TOKYO_SURFACE
 
 # ── New York (amber) ──
 NY_35 = "#a88312"
-NY_55 = "#f9c31f"
-NY_95 = "#fef5d8"
+NY_55 = LL_NY
+NY_95 = LL_NY_SURFACE
 
 # ── Dark card tokens ──
-CARD_BG = "#1a1a1a"
-CARD_TEXT = "#ffffff"
-CARD_SUBTITLE = "#d8d8d8"
-CARD_MUTED = "#9a9a9a"
-CARD_BORDER = "rgba(255, 255, 255, 0.12)"
-CARD_ITEM = "#ededed"
+CARD_BG = LL_CARD_BG
+CARD_TEXT = LL_CARD_TEXT
+CARD_SUBTITLE = LL_CARD_SUBTITLE
+CARD_MUTED = LL_CARD_MUTED
+CARD_BORDER = LL_CARD_BORDER
+CARD_ITEM = LL_CARD_ITEM
 
 # ── Semantic status ──
-PASS_BG = "#e4f5f0"
-PASS_TEXT = "#0e6e5a"
-WARN_BG = "#fdeee0"
-WARN_TEXT = "#7a3d10"
-FAIL_BG = "#fde8e7"
-FAIL_TEXT = "#7a0906"
-INFO_BG = "#e5e8f5"
-INFO_TEXT = "#1f2e7a"
+PASS_BG = LL_STATUS["pass"]["fill"]
+PASS_TEXT = LL_STATUS["pass"]["text"]
+WARN_BG = LL_STATUS["warn"]["fill"]
+WARN_TEXT = LL_STATUS["warn"]["text"]
+FAIL_BG = LL_STATUS["fail"]["fill"]
+FAIL_TEXT = LL_STATUS["fail"]["text"]
+INFO_BG = LL_STATUS["info"]["fill"]
+INFO_TEXT = LL_STATUS["info"]["text"]
 
 # ── Semantic aliases for charts ──
 TREND_UP = HK_35
@@ -73,11 +117,18 @@ MIGRATION_FAVORABLE = HK_35
 MIGRATION_UNFAVORABLE = TOKYO_40
 
 # ── Teal sequential palette (for charts) ──
-TEAL_SEQUENTIAL = [HK_5, HK_15, HK_25, HK_35, HK_45, HK_55, HK_70, HK_85]
+TEAL_SEQUENTIAL = list(LL_SEQ)
+
+# ── Categorical palette for product lines ──
+# Spec's LL_CAT_10 paired categorical slots, taken in documented order
+# (Chicago-20/70, HK-20/70, Tokyo-20/70, ...) -- "always in order, never
+# skip a slot." Product lines are non-ranked categories, not a magnitude
+# ramp, so they get the paired categorical palette, not TEAL_SEQUENTIAL.
+PRODUCT_LINE_COLORS = list(LL_CAT_10[:5])
 
 # ── Typography (for Plotly) ──
-FONT_SERIF = "Playfair Display, Georgia, Times New Roman, serif"
-FONT_SANS = "Source Sans 3, Source Sans Pro, Helvetica Neue, Helvetica, Arial, sans-serif"
+FONT_SERIF = f"{LL_SERIF}, Georgia, Times New Roman, serif"
+FONT_SANS = f"{LL_SANS}, Source Sans Pro, Helvetica Neue, Helvetica, Arial, sans-serif"
 
 # ── Quadrant labels ──
 QUADRANT_LABELS = {
