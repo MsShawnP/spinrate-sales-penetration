@@ -15,13 +15,13 @@ from lailara_palette import (
     LL_CARD_MUTED,
     LL_CARD_SUBTITLE,
     LL_CARD_TEXT,
-    LL_CAT_10,
     LL_CHICAGO,
     LL_CHICAGO_HOVER,
     LL_CHICAGO_LIGHT,
     LL_DISABLED,
     LL_GRIDLINE,
     LL_HK,
+    LL_HK_DARK,
     LL_HK_LIGHT,
     LL_HK_SURFACE,
     LL_INK,
@@ -118,12 +118,14 @@ MIGRATION_UNFAVORABLE = TOKYO_40
 # ── Teal sequential palette (for charts) ──
 TEAL_SEQUENTIAL = list(LL_SEQ)
 
-# ── Categorical palette for product lines ──
-# Spec's LL_CAT_10 paired categorical slots, taken in documented order
-# (Chicago-20/70, HK-20/70, Tokyo-20/70, ...) -- "always in order, never
-# skip a slot." Product lines are non-ranked categories, not a magnitude
-# ramp, so they get the paired categorical palette, not TEAL_SEQUENTIAL.
-PRODUCT_LINE_COLORS = list(LL_CAT_10[:5])
+# ── Categorical palette for product lines (5 hues, no Red/Tokyo) ──
+PRODUCT_LINE_COLORS = [
+    LL_CHICAGO,  # Chicago-20 — dark blue
+    LL_CHICAGO_LIGHT,  # Chicago-70 — light blue
+    LL_HK_DARK,  # HK-20 — dark teal
+    LL_HK_LIGHT,  # HK-70 — light teal
+    LL_SG_DARK,  # SG-20 — dark orange
+]
 
 # ── Typography (for Plotly) ──
 FONT_SERIF = f"{LL_SERIF}, Georgia, Times New Roman, serif"
