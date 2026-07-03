@@ -1,6 +1,15 @@
 # Handoff — Spinrate Sales Penetration
 
-## 2026-07-02 22:15 (session 13 cont'd — AG Grid autoSize bug, legend spacing, at-risk sort)
+## 2026-07-02 23:00 (session 13 cont'd — design-system compliance, item 1 of 5)
+
+**Started from:** Prior wrap point (`faba6db`) — deployed and healthy, only `/ce:compound` outstanding. New 5-part design-system compliance task opened (categorical palette, London-70 corner labels, governance import + drift guard, definitions UI, hero-card spec check).
+
+**Did:** Worked item 1 (categorical palette: stop using `TEAL_SEQUENTIAL` for 5 non-ranked product-line categories). Verified vendored `packages/lailara-palette/` is byte-identical (formatting aside) to the source-of-truth package. Hit a concurrent-session git race on `app/constants.py` (matches the documented lesson below) — flagged it and paused rather than keep committing into a shared index. The other session made a deliberate final call: hand-picked 5 hues (Chicago-20/70, HK-20/70, SG-20) excluding Tokyo/Red entirely, rather than the spec's literal `LL_CAT_10[:5]` slot order (`e659a5c`).
+
+**State:** `app/constants.py`/`app/views/quadrant.py` reflect the hand-picked no-Red/no-Tokyo palette as final. 181 tests passing, working tree clean. `main` is 3 commits ahead of `origin/main` (not pushed this session). Items 2–5 of the design-system task not started.
+
+**Next:** Item 2 — swap `DISABLED`/London-70 to a non-disabled muted token for ~8 always-visible quadrant-corner-label call sites (`quadrant.py`/`migration.py`). Item 3 — drift-guard test + CSS import still needed. Item 4 — **blocked**: task referenced "the Metrics + Quadrants text exactly as written above" but that text was never actually included in the message; get it before building the definitions UI. Item 5 — hero-card vs. spec check not started.
+
 
 **Started from:** Prior wrap point (`faba6db`) — all audit findings resolved, 181 tests passing, deployed and healthy.
 

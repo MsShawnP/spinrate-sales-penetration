@@ -2,7 +2,12 @@
 
 *What didn't work and why, so we don't repeat it.*
 
-### 2026-07-02 — `Plotly.Plots.resize()`/`Plotly.react()` didn't fix the legend font-swap race
+### 2026-07-02 — Concurrent-session git race recurred despite an existing documented lesson
+- **What happened:** Mid-edit on `app/constants.py` (fixing the categorical product-line palette), a second Claude Code session was independently committing to the same file. My in-progress edit got swept into the other session's commit (`c021056`) because there's one shared git index per working directory, not one per session — the exact failure mode already documented in this file's `DECISIONS.md` entry from session 12. The other session then explicitly overrode my fix with its own follow-up commit.
+- **Root cause:** Two active Claude Code sessions in the same working directory at the same time, with no coordination mechanism between them.
+- **Fix:** Detected it via `git log` (an unrecognized commit appearing mid-task) and by diffing the actual file content against what I'd written. Stopped issuing further `git add`/`commit` and flagged the situation to the user instead of pushing forward.
+- **Lesson:** The existing DECISIONS.md guidance ("stand down on git entirely when a second session is live") is correct but doesn't prevent the race from happening — it only tells you what to do once you notice it. Detection requires actively watching `git log` for unrecognized commits during multi-step tasks, not just checking `git status` before your own commits.
+
 - **What happened:** Diagnosed the quadrant legend clipping bug as a Plotly.js text-measurement race against the async Source Sans 3 web font (`font-display: swap`). Tried forcing Plotly to re-measure/redraw the legend once `document.fonts.ready` resolved, via `Plotly.Plots.resize()` and separately `Plotly.react()`. Live browser tests gave inconsistent results — legend entry positions sometimes stayed frozen at their pre-swap (wrong) values even after the resize/relayout call.
 - **Root cause:** Plotly's legend text-width measurement appears to be cached in a way that isn't reliably invalidated by a resize/relayout call alone when the font-family string itself hasn't changed — only the browser's live rendering of it has (pre- vs post-swap).
 - **Fix:** Abandoned trying to force-correct Plotly's own SVG legend after the fact. Replaced it entirely with a custom HTML/CSS grid legend (`_build_custom_legend` in `app/views/quadrant.py`), which reflows correctly on any font swap because it's normal DOM text, not an SVG measurement cache.

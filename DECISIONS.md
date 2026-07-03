@@ -2,6 +2,11 @@
 
 *Durable choices with rationale. Updated as decisions are made.*
 
+### 2026-07-02 — Product-line categorical palette hand-picks 5 hues, excluding Tokyo/Red entirely
+- **Why:** The design system's `LL_CAT_10` paired categorical palette is documented as "always in order, never skip a slot," which for a 5-series chart would be Chicago-20/70, HK-20/70, Tokyo-20. Tokyo is the rose/berry/red-adjacent family. `PRODUCT_LINE_COLORS` (`app/constants.py`) instead uses Chicago-20/70, HK-20/70, SG-20 — substituting Singapore-20 (orange) for Tokyo-20, deliberately avoiding any red-adjacent hue in a chart with no good/bad semantic (5 plain product-line categories). This mirrors the accessibility reasoning already applied to doormath's gap-bar fix, extended here even though this chart isn't a good/bad binary — the working assumption is that avoiding red-family hues in *any* Cinderhaven-suite chart reduces risk of being misread as a severity signal.
+- **Scope:** `PRODUCT_LINE_COLORS` in `app/constants.py`, used by `_assign_product_line_colors()` in `app/views/quadrant.py`. Applies to the Quadrant chart's product-line legend/bubbles specifically.
+- **Do not:** Revert `PRODUCT_LINE_COLORS` to the literal `list(LL_CAT_10[:5])` slot order (which would reintroduce Tokyo-20) without discussing the accessibility tradeoff first. If a 6th product line is ever added, pick the next hue deliberately (not by resuming the literal LL_CAT_10 slot sequence, which would land on Tokyo-70).
+
 ### 2026-07-02 — AG Grid shared `data_grid()` uses `columnSize="responsiveSizeToFit"`, not `"autoSize"`
 - **Why:** `autoSize` measures column width against whatever `rowData` is present at the moment AG Grid initializes — which in this app is always the empty `[]` passed at layout time, since real rows arrive later via a Dash callback. That collapsed every column to a single character in production. `responsiveSizeToFit` re-fits columns to the grid width whenever data loads or the grid resizes, so it works correctly regardless of when `rowData` actually populates.
 - **Scope:** `data_grid()` in `app/components.py`, used by At-Risk, Watchlist, and Expansion tables. Applies to any future Dash+AG Grid view in this app where `rowData` is populated asynchronously after initial mount (which is the norm here, not the exception).
