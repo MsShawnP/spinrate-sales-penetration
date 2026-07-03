@@ -87,6 +87,63 @@ WINDOW_NOTE = (
     "meaningful. The two can span different periods."
 )
 
+# Screen-specific definitions appended to the shared definitions panel
+# on this tab only (see components.definitions_panel extra_section).
+_AT_RISK_DEFINITIONS = {
+    "heading": "On this screen — at-risk signals",
+    "intro": (
+        "Every at-risk SKU is scored on two independent axes — its current "
+        "Level and its long-run Trend — then sorted into a Tier."
+    ),
+    "items": [
+        (
+            "Tier",
+            "the priority bucket, by severity: Act Now (red) = below the "
+            "category median and declining, needs immediate attention; Fix or "
+            "Rationalize (amber) = below the median but stable, improve "
+            "velocity or reconsider distribution; Watchlist (green) = still "
+            "above the median but the trend is declining, monitor before it "
+            "slips.",
+        ),
+        (
+            "Signal",
+            "which axis triggered the flag: Level, Trend, or Level + Trend.",
+        ),
+        (
+            "Level",
+            "where the SKU's velocity sits right now versus its category "
+            "median, over the selected date range (shown as Indexed SPPD).",
+        ),
+        (
+            "Indexed SPPD (Idx SPPD)",
+            "the SKU's SPPD ÷ its product line's full-dataset median SPPD. "
+            "1.0 = exactly typical; below 1.0 = slower-selling than its peers, "
+            "above = faster. Fixed across filters.",
+        ),
+        (
+            "Trend",
+            "the direction of the SKU's velocity over the trailing 8 quarters "
+            "(rising / flat / declining), independent of the selected date "
+            "range — a slope needs history to be meaningful.",
+        ),
+        (
+            "SPPD",
+            "units sold per carrying store per day (see the metric definitions "
+            "above).",
+        ),
+        (
+            "Current $",
+            "the SKU's revenue over the selected period.",
+        ),
+        (
+            "Gap vs Median",
+            "how far the SKU's velocity sits above or below its category "
+            "median, as a percentage. −6.9% means it sells 6.9% slower than "
+            "the typical SKU in its line.",
+        ),
+    ],
+}
+
 
 # ── Data assembly ────────────────────────────────────────────────
 
@@ -361,7 +418,7 @@ def layout():
                 SPPD_FORMULA,
                 className="formula-note",
             ),
-            definitions_panel(),
+            definitions_panel(extra_section=_AT_RISK_DEFINITIONS),
         ],
     )
 

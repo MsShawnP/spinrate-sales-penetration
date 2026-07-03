@@ -266,17 +266,120 @@ def _definition_item(term, description):
     )
 
 
-def definitions_panel():
+def _definition_paragraph(text):
+    """Muted body paragraph (no bold term) inside definitions_panel()."""
+    return html.P(
+        text,
+        style={
+            "margin": "0 0 12px 0",
+            "fontFamily": FONT_SANS,
+            "fontSize": "15px",
+            "lineHeight": "1.5",
+            "color": TEXT_SECONDARY,
+        },
+    )
+
+
+# Serif sub-heading for a section inside definitions_panel().
+_DEFINITIONS_HEADING_STYLE = {
+    "fontFamily": FONT_SERIF,
+    "fontSize": "18px",
+    "fontWeight": "700",
+    "color": INK,
+    "margin": "0 0 12px 0",
+}
+
+
+def definitions_panel(extra_section=None):
     """Collapsible metric/quadrant definitions -- same disclosure pattern as
     the narrative section (.narrative-details / .narrative-toggle), placed
-    at the bottom of every tab."""
-    heading_style = {
-        "fontFamily": FONT_SERIF,
-        "fontSize": "18px",
-        "fontWeight": "700",
-        "color": INK,
-        "margin": "0 0 12px 0",
-    }
+    at the bottom of every tab.
+
+    extra_section, if given, appends a screen-specific sub-section after the
+    shared content. Shape: {"heading": str, "intro": str (optional),
+    "items": [(term, description), ...]}.
+    """
+    heading_style = _DEFINITIONS_HEADING_STYLE
+
+    children = [
+        html.H3("What the axes mean", style=heading_style),
+        _definition_item(
+            "Sales Penetration",
+            "how widely a product is distributed: the breadth of its "
+            "availability across stores. On these charts it's the "
+            "horizontal axis, measured by ACV%.",
+        ),
+        _definition_item(
+            "Sales Velocity",
+            "how fast a product sells once it's on the shelf: the depth "
+            "of demand where it's stocked. On these charts it's the "
+            "vertical axis, measured by SPPD.",
+        ),
+        _definition_item(
+            "ACV% (All-Commodity Volume)",
+            "the share of total retail sales volume, weighted by store "
+            "size, that comes from the stores carrying this SKU. Because "
+            "stores are weighted by their overall sales, being on the "
+            "shelf at large, high-traffic retailers counts for more than "
+            "the same shelf at small ones. Higher ACV% means broader, "
+            "more valuable distribution.",
+        ),
+        _definition_item(
+            "SPPD (Sales Per Point of Distribution, per day)",
+            "how many units sell per carrying store per day: Total Units "
+            "÷ Carrying Stores ÷ Days in Period. It isolates true shelf "
+            "performance from how many doors a product is in, so a niche "
+            "item in a few stores and a giant in thousands can be "
+            "compared on equal footing. Higher SPPD means it sells faster "
+            "wherever it's carried.",
+        ),
+        html.H3(
+            "The four quadrants",
+            style={**heading_style, "marginTop": "20px"},
+        ),
+        _definition_paragraph(
+            "Each SKU is placed by penetration (ACV%, left→right) and "
+            "velocity (SPPD, bottom→top), split at the median of each."
+        ),
+        _definition_item(
+            "Stars",
+            "high penetration, high velocity. Widely distributed and "
+            "selling fast. Your proven winners — protect the "
+            "distribution and keep feeding them.",
+        ),
+        _definition_item(
+            "Hidden Gems",
+            "low penetration, high velocity. They sell fast wherever "
+            "they're stocked but aren't in enough doors yet. The biggest "
+            "expansion upside — the priority is getting them onto more "
+            "shelves.",
+        ),
+        _definition_item(
+            "Wide but Dead",
+            "high penetration, low velocity. Everywhere, but not moving. "
+            "You're paying for shelf space that isn't earning it — "
+            "either fix the velocity (pricing, merchandising, promotion) "
+            "or rationalize the distribution.",
+        ),
+        _definition_item(
+            "Question Marks",
+            "low penetration, low velocity. Neither broadly distributed "
+            "nor selling. Small, unproven bets — find the wedge that "
+            "makes one work, or cut it.",
+        ),
+    ]
+
+    if extra_section:
+        children.append(
+            html.H3(
+                extra_section["heading"],
+                style={**heading_style, "marginTop": "20px"},
+            )
+        )
+        if extra_section.get("intro"):
+            children.append(_definition_paragraph(extra_section["intro"]))
+        for term, description in extra_section["items"]:
+            children.append(_definition_item(term, description))
 
     return html.Details(
         [
@@ -284,83 +387,7 @@ def definitions_panel():
                 "How to read this — definitions",
                 className="narrative-toggle",
             ),
-            html.Div(
-                [
-                    html.H3("What the axes mean", style=heading_style),
-                    _definition_item(
-                        "Sales Penetration",
-                        "how widely a product is distributed: the breadth of its "
-                        "availability across stores. On these charts it's the "
-                        "horizontal axis, measured by ACV%.",
-                    ),
-                    _definition_item(
-                        "Sales Velocity",
-                        "how fast a product sells once it's on the shelf: the depth "
-                        "of demand where it's stocked. On these charts it's the "
-                        "vertical axis, measured by SPPD.",
-                    ),
-                    _definition_item(
-                        "ACV% (All-Commodity Volume)",
-                        "the share of total retail sales volume, weighted by store "
-                        "size, that comes from the stores carrying this SKU. Because "
-                        "stores are weighted by their overall sales, being on the "
-                        "shelf at large, high-traffic retailers counts for more than "
-                        "the same shelf at small ones. Higher ACV% means broader, "
-                        "more valuable distribution.",
-                    ),
-                    _definition_item(
-                        "SPPD (Sales Per Point of Distribution, per day)",
-                        "how many units sell per carrying store per day: Total Units "
-                        "÷ Carrying Stores ÷ Days in Period. It isolates true shelf "
-                        "performance from how many doors a product is in, so a niche "
-                        "item in a few stores and a giant in thousands can be "
-                        "compared on equal footing. Higher SPPD means it sells faster "
-                        "wherever it's carried.",
-                    ),
-                    html.H3(
-                        "The four quadrants",
-                        style={**heading_style, "marginTop": "20px"},
-                    ),
-                    html.P(
-                        "Each SKU is placed by penetration (ACV%, left→right) and "
-                        "velocity (SPPD, bottom→top), split at the median of each.",
-                        style={
-                            "margin": "0 0 12px 0",
-                            "fontFamily": FONT_SANS,
-                            "fontSize": "15px",
-                            "lineHeight": "1.5",
-                            "color": TEXT_SECONDARY,
-                        },
-                    ),
-                    _definition_item(
-                        "Stars",
-                        "high penetration, high velocity. Widely distributed and "
-                        "selling fast. Your proven winners — protect the "
-                        "distribution and keep feeding them.",
-                    ),
-                    _definition_item(
-                        "Hidden Gems",
-                        "low penetration, high velocity. They sell fast wherever "
-                        "they're stocked but aren't in enough doors yet. The biggest "
-                        "expansion upside — the priority is getting them onto more "
-                        "shelves.",
-                    ),
-                    _definition_item(
-                        "Wide but Dead",
-                        "high penetration, low velocity. Everywhere, but not moving. "
-                        "You're paying for shelf space that isn't earning it — "
-                        "either fix the velocity (pricing, merchandising, promotion) "
-                        "or rationalize the distribution.",
-                    ),
-                    _definition_item(
-                        "Question Marks",
-                        "low penetration, low velocity. Neither broadly distributed "
-                        "nor selling. Small, unproven bets — find the wedge that "
-                        "makes one work, or cut it.",
-                    ),
-                ],
-                className="narrative-section",
-            ),
+            html.Div(children, className="narrative-section"),
         ],
         className="narrative-details",
     )

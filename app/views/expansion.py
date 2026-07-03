@@ -44,6 +44,54 @@ from app.constants import (
 # projections (per plan R16, AE1).
 MIN_DOOR_THRESHOLD = 10
 
+# Screen-specific definitions appended to the shared definitions panel
+# on this tab only (see components.definitions_panel extra_section).
+_EXPANSION_DEFINITIONS = {
+    "heading": "On this screen — expansion upside",
+    "intro": (
+        "These figures estimate the revenue a \"hidden gem\" would add by "
+        "widening its distribution, holding its current selling rate (SPPD) "
+        "constant. Each SKU is compared to the distribution of the other "
+        "SKUs in its own product line."
+    ),
+    "items": [
+        (
+            "Median benchmark (headline card)",
+            "total quarterly revenue these hidden gems would add if each "
+            "expanded to the median store count of its product line: the "
+            "realistic \"catch up to typical\" target.",
+        ),
+        (
+            "75th percentile (headline card)",
+            "total added revenue if each reached the store count of a strong "
+            "peer (the 75th-percentile SKU in its line): a stretch goal.",
+        ),
+        (
+            "Category leader (headline card)",
+            "total added revenue if each matched the most widely distributed "
+            "SKU in its product line: the aggressive ceiling.",
+        ),
+        (
+            "SPPD",
+            "the SKU's current velocity (units per carrying store per day), "
+            "held fixed in every projection above.",
+        ),
+        (
+            "Upside @ Median (table)",
+            "this SKU's incremental quarterly revenue from expanding to its "
+            "product line's median store count.",
+        ),
+        (
+            "Upside @ 75th (table)",
+            "the same, expanding to the 75th-percentile store count in its line.",
+        ),
+        (
+            "Upside @ Leader (table)",
+            "the same, expanding to the category leader's store count.",
+        ),
+    ],
+}
+
 
 # ── Data assembly ─────────────────────────────────────────────────
 
@@ -271,7 +319,7 @@ def layout():
                 SPPD_FORMULA,
                 className="formula-note",
             ),
-            definitions_panel(),
+            definitions_panel(extra_section=_EXPANSION_DEFINITIONS),
         ],
     )
 
