@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 from app.app import app
 from app.calculations import calculate_acv_pct, calculate_sppd_from_agg, classify_quadrant, days_in_quarter_range
 from app.charts import CHART_CONFIG, economist_layout
-from app.components import dark_callout_card
+from app.components import dark_callout_card, definitions_panel
 from app.constants import (
     CANVAS,
     CHICAGO_20,
@@ -881,6 +881,7 @@ def layout():
                 SPPD_FORMULA,
                 className="formula-note",
             ),
+            definitions_panel(),
         ],
         id="migration-view",
     )

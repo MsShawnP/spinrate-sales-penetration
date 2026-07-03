@@ -28,7 +28,7 @@ from app.calculations import (
     days_in_quarter_range,
 )
 from app.charts import CHART_CONFIG, economist_layout
-from app.components import dark_callout_card
+from app.components import dark_callout_card, definitions_panel
 from app.constants import (
     CANVAS,
     CHICAGO_20,
@@ -574,6 +574,7 @@ def layout():
                 SPPD_FORMULA,
                 className="formula-note",
             ),
+            definitions_panel(),
             # Indexed SPPD explanation — only populated while the toggle is on.
             html.Div(id="indexed-sppd-note"),
             # Detail card area (populated by click-to-pin callback).

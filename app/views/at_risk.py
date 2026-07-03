@@ -22,7 +22,7 @@ from app.calculations import (
     calculate_velocity_trend_from_quarterly,
     days_in_quarter_range,
 )
-from app.components import annotation_callout, dark_callout_card, data_grid, hero_card
+from app.components import annotation_callout, dark_callout_card, data_grid, definitions_panel, hero_card
 from app.constants import (
     FAIL_BG,
     FAIL_TEXT,
@@ -361,6 +361,7 @@ def layout():
                 SPPD_FORMULA,
                 className="formula-note",
             ),
+            definitions_panel(),
         ],
     )
 
