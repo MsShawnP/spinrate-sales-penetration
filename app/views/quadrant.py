@@ -315,7 +315,9 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
             yref="paper",
             text=QUADRANT_LABELS["star"],
             showarrow=False,
-            font=dict(family=FONT_SANS, size=13, color=DISABLED),
+            # Muted subtitle text, not DISABLED (London-70) -- these labels
+            # are always visible, never a disabled UI state.
+            font=dict(family=FONT_SANS, size=13, color=TEXT_SECONDARY),
         ),
         # Hidden Gems — top-left
         dict(
@@ -325,7 +327,9 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
             yref="paper",
             text=QUADRANT_LABELS["hidden_gem"],
             showarrow=False,
-            font=dict(family=FONT_SANS, size=13, color=DISABLED),
+            # Muted subtitle text, not DISABLED (London-70) -- these labels
+            # are always visible, never a disabled UI state.
+            font=dict(family=FONT_SANS, size=13, color=TEXT_SECONDARY),
         ),
         # Wide but Dead — bottom-right
         dict(
@@ -335,7 +339,9 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
             yref="paper",
             text=QUADRANT_LABELS["wide_but_dead"],
             showarrow=False,
-            font=dict(family=FONT_SANS, size=13, color=DISABLED),
+            # Muted subtitle text, not DISABLED (London-70) -- these labels
+            # are always visible, never a disabled UI state.
+            font=dict(family=FONT_SANS, size=13, color=TEXT_SECONDARY),
         ),
         # Question Marks — bottom-left
         dict(
@@ -345,7 +351,9 @@ def _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode=False
             yref="paper",
             text=QUADRANT_LABELS["question_mark"],
             showarrow=False,
-            font=dict(family=FONT_SANS, size=13, color=DISABLED),
+            # Muted subtitle text, not DISABLED (London-70) -- these labels
+            # are always visible, never a disabled UI state.
+            font=dict(family=FONT_SANS, size=13, color=TEXT_SECONDARY),
         ),
     ]
 

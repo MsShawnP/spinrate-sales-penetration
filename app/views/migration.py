@@ -23,7 +23,6 @@ from app.constants import (
     CANVAS,
     CHICAGO_20,
     CHICAGO_70,
-    DISABLED,
     FONT_SANS,
     FONT_SERIF,
     GRIDLINE,
@@ -210,26 +209,28 @@ def _build_migration_df(p1_df, p2_df):
 
 def _quadrant_annotations():
     """Return the standard 4 quadrant corner label annotations."""
+    # Muted subtitle text, not DISABLED (London-70) -- these labels are
+    # always visible, never a disabled UI state.
     return [
         dict(
             x=0.75, y=0.92, xref="paper", yref="paper",
             text=QUADRANT_LABELS["star"], showarrow=False,
-            font=dict(family=FONT_SANS, size=13, color=DISABLED),
+            font=dict(family=FONT_SANS, size=13, color=TEXT_SECONDARY),
         ),
         dict(
             x=0.25, y=0.92, xref="paper", yref="paper",
             text=QUADRANT_LABELS["hidden_gem"], showarrow=False,
-            font=dict(family=FONT_SANS, size=13, color=DISABLED),
+            font=dict(family=FONT_SANS, size=13, color=TEXT_SECONDARY),
         ),
         dict(
             x=0.75, y=0.08, xref="paper", yref="paper",
             text=QUADRANT_LABELS["wide_but_dead"], showarrow=False,
-            font=dict(family=FONT_SANS, size=13, color=DISABLED),
+            font=dict(family=FONT_SANS, size=13, color=TEXT_SECONDARY),
         ),
         dict(
             x=0.25, y=0.08, xref="paper", yref="paper",
             text=QUADRANT_LABELS["question_mark"], showarrow=False,
-            font=dict(family=FONT_SANS, size=13, color=DISABLED),
+            font=dict(family=FONT_SANS, size=13, color=TEXT_SECONDARY),
         ),
     ]
 
