@@ -22,7 +22,6 @@ from lailara_palette import (
     LL_DISABLED,
     LL_GRIDLINE,
     LL_HK,
-    LL_HK_DARK,
     LL_HK_LIGHT,
     LL_HK_SURFACE,
     LL_INK,
