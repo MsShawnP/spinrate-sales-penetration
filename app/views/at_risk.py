@@ -325,7 +325,7 @@ _COLUMN_DEFS = [
         "headerName": "Current $",
         "width": 130,
         "valueFormatter": {"function": "d3.format('$,.0f')(params.value)"},
-        "headerTooltip": "Current quarterly dollars.",
+        "headerTooltip": "Current dollars over the selected period.",
     },
     {
         "field": "velocity_gap",
@@ -556,7 +556,7 @@ def register_callbacks():
             {"label": "Trend Direction", "value": trend.capitalize()},
             {"label": "Quarters Analyzed", "value": f"{quarters}" + (" (limited)" if limited else "")},
             {"label": "Current Doors", "value": fmt_number(door_count)},
-            {"label": "Current Quarterly $", "value": fmt_dollars(current_dollars)},
+            {"label": "Current $ (selected period)", "value": fmt_dollars(current_dollars)},
         ]
 
         return dark_callout_card(
@@ -597,7 +597,7 @@ def _build_summary(summary):
                         },
                     ),
                     html.Span(
-                        f" representing {fmt_dollars(total_dollars)} in quarterly revenue",
+                        f" representing {fmt_dollars(total_dollars)} in revenue (selected period)",
                         style={
                             "fontFamily": FONT_SANS,
                             "fontSize": "15px",
@@ -650,6 +650,4 @@ def _empty_message(text):
                 "fontSize": "17px",
                 "color": TEXT_SECONDARY,
                 "padding": "24px 0",
-            },
-        ),
-    )
+ 

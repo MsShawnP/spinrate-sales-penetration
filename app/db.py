@@ -239,9 +239,11 @@ def _scan_data_agg_from_scan(clauses, params, needs_store_join=False):
 def get_scan_data_agg(filters=None):
     """Fetch per-SKU aggregated scan data.
 
-    Unfiltered path reads mart_sku_scan_totals directly (~50 rows, no
-    GROUP BY). Filtered path (retailer/region) falls back to a GROUP BY
-    over fct_scan_data since the mart has no retailer dimension.
+    Fast path reads mart_sku_scan_totals directly (~50 rows, no GROUP BY),
+    but only when no restriction is in effect: the mart has no retailer
+    dimension and covers the full default quarter range, so any retailer/
+    region filter or narrower date selection falls back to a GROUP BY
+    over fct_scan_data with the appropriate WHERE clauses.
 
     Returns ~50 rows. Columns: sku, total_units, total_dollars, door_count.
     """
@@ -252,7 +254,16 @@ def get_scan_data_agg(filters=None):
         region = filters.get("region")
         needs_store_filter = bool(retailers) or bool(region)
 
-        if not needs_store_filter:
+        start_q = filters.get("start_quarter")
+        end_q = filters.get("end_quarter")
+        # The mart aggregates the full default range; a date restriction is
+        # in effect whenever either bound narrows that range.
+        needs_date_filter = (
+            (start_q is not None and start_q != DEFAULT_START_QUARTER)
+            or (end_q is not None and end_q != DEFAULT_END_QUARTER)
+        )
+
+        if not needs_store_filter and not needs_date_filter:
             sql = (
                 "SELECT sku, "
                 "total_units::float AS total_units, "
@@ -269,8 +280,6 @@ def get_scan_data_agg(filters=None):
         clauses = []
         params = []
 
-        start_q = filters.get("start_quarter")
-        end_q = filters.get("end_quarter")
         if start_q:
             clauses.append("sd.week_ending >= %s")
             params.append(_quarter_start_date(start_q))
@@ -278,15 +287,17 @@ def get_scan_data_agg(filters=None):
             clauses.append("sd.week_ending <= %s")
             params.append(_quarter_end_date(end_q))
 
-        placeholders = ", ".join(["%s"] * len(retailers)) if retailers else ""
         if retailers:
+            placeholders = ", ".join(["%s"] * len(retailers))
             clauses.append(f"ds.retailer IN ({placeholders})")
             params.extend(retailers)
         if region:
             clauses.append("ds.region = %s")
             params.append(region)
 
-        return _scan_data_agg_from_scan(clauses, params, needs_store_join=True)
+        return _scan_data_agg_from_scan(
+            clauses, params, needs_store_join=needs_store_filter
+        )
 
     return _cached("scan_data_agg", filters, _load)
 
@@ -522,22 +533,4 @@ def _quarter_start_date(quarter_str):
         Q1 = Jan 1, Q2 = Apr 1, Q3 = Jul 1, Q4 = Oct 1.
     """
     q, year = quarter_str.split()
-    q_num = int(q[1])
-    month = (q_num - 1) * 3 + 1
-    return f"{year}-{month:02d}-01"
-
-
-def _quarter_end_date(quarter_str):
-    """Convert 'Q4 2025' to the last day of that quarter as a date string.
-
-    Quarter boundaries:
-        Q1 = Mar 31, Q2 = Jun 30, Q3 = Sep 30, Q4 = Dec 31.
-    """
-    q, year = quarter_str.split()
-    q_num = int(q[1])
-    end_month = q_num * 3
-    if end_month in (3, 12):
-        end_day = 31
-    else:
-        end_day = 30
-    return f"{year}-{end_month:02d}-{end_day:02d}"
+    

@@ -561,6 +561,10 @@ def layout():
             # callback that builds the chart figure. Replaces Plotly's
             # built-in SVG legend; see _build_custom_legend.
             html.Div(id="quadrant-legend"),
+            # ACV% denominator caption -- only shown when a retailer/region
+            # filter is active, since ACV% is always measured against the
+            # full store universe (get_stores() is unfiltered).
+            html.Div(id="quadrant-acv-caption"),
             # Low-door marker style caption (legend no longer labels this
             # separately -- see the (low doors) trace in _build_quadrant_figure).
             html.P(
@@ -662,6 +666,7 @@ def register_callbacks():
         Output("quadrant-chart", "figure"),
         Output("quadrant-summary", "children"),
         Output("quadrant-legend", "children"),
+        Output("quadrant-acv-caption", "children"),
         Input("filter-state", "data"),
         Input("indexed-mode", "data"),
     )
@@ -672,6 +677,17 @@ def register_callbacks():
         filters = json.loads(filter_json) if filter_json else {}
         indexed_mode = bool(indexed_mode)
 
+        # ACV% is always measured against the total store universe
+        # (get_stores() below is unfiltered), so explain the denominator
+        # when a retailer/region filter narrows the rest of the view.
+        acv_caption = []
+        if filters.get("retailers") or filters.get("region"):
+            acv_caption = html.P(
+                "ACV% is measured against the total store universe, "
+                "not just the filtered retailer/region.",
+                className="formula-note",
+            )
+
         try:
             scan_agg = db.get_scan_data_agg(filters)
             dist_df = db.get_distribution(filters)
@@ -681,10 +697,10 @@ def register_callbacks():
             products_df = db.get_products()
         except Exception:
             logger.exception("Quadrant chart callback failed")
-            return _build_empty_figure(), [], []
+            return _build_empty_figure(), [], [], acv_caption
 
         if scan_agg.empty or dist_df.empty:
-            return _build_empty_figure(), [], []
+            return _build_empty_figure(), [], [], acv_caption
 
         # Compute metrics.
         start_q = filters.get("start_quarter", "Q1 2025")
@@ -695,7 +711,7 @@ def register_callbacks():
         acv_df = calculate_acv_pct(dist_df, stores_df)
 
         if sppd_df.empty or acv_df.empty:
-            return _build_empty_figure(), [], []
+            return _build_empty_figure(), [], [], acv_caption
 
         # Merge SPPD + ACV + product info.
         chart_df = sppd_df.merge(acv_df[["sku", "acv_pct"]], on="sku", how="inner")
@@ -709,7 +725,7 @@ def register_callbacks():
         chart_df["total_dollars"] = chart_df["total_dollars"].fillna(0)
 
         if chart_df.empty:
-            return _build_empty_figure(), [], []
+            return _build_empty_figure(), [], [], acv_caption
 
         # Fixed dividing-line medians from the full unfiltered dataset, so
         # quadrant membership doesn't reshuffle when filters change.
@@ -754,7 +770,7 @@ def register_callbacks():
         fig = _build_quadrant_figure(chart_df, median_sppd, median_acv, indexed_mode)
         summary = _build_quadrant_summary(chart_df)
         legend = _build_custom_legend(chart_df)
-        return fig, summary, legend
+        return fig, summary, legend, acv_caption
 
     # Detail card callback — renders when selected-sku changes.
     @callback(
@@ -843,24 +859,4 @@ def register_callbacks():
 
         # Velocity trend from pre-aggregated quarterly SPPD.
         trend_filters = {
-            k: v for k, v in filters.items() if k not in ("start_quarter", "end_quarter")
-        }
-        quarterly_sppd_df = db.get_quarterly_sppd(trend_filters)
-        trend_df = calculate_velocity_trend_from_quarterly(quarterly_sppd_df)
-        sku_trend = trend_df[trend_df["sku"] == selected_sku]
-        trend_label = sku_trend["trend"].iloc[0].capitalize() if not sku_trend.empty else "N/A"
-
-        rows = [
-            {"label": "SPPD", "value": f"{sppd_val:.4f}"},
-            {"label": "ACV%", "value": fmt_pct(acv_val)},
-            {"label": "Total Dollars", "value": fmt_dollars(sku_dollars)},
-            {"label": "Door Count", "value": fmt_number(door_count)},
-            {"label": "Quadrant", "value": quadrant},
-            {"label": "Velocity Trend", "value": trend_label},
-        ]
-
-        return dark_callout_card(
-            title=product_name,
-            subtitle=product_line,
-            rows=rows,
-        )
+            k: v for k, v in filters.items() if

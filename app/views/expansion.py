@@ -474,7 +474,7 @@ def register_callbacks():
             {"label": "Current ACV%", "value": fmt_pct(acv_pct)},
             {"label": "Current SPPD", "value": f"{current_sppd:.4f}"},
             {"label": "Current Doors", "value": fmt_number(current_doors)},
-            {"label": "Current Quarterly $", "value": fmt_dollars(current_dollars)},
+            {"label": "Current $ (selected period)", "value": fmt_dollars(current_dollars)},
             {"label": "", "value": ""},  # Separator.
             {
                 "label": f"Median target ({fmt_number(median_doors)} doors)",
@@ -510,5 +510,4 @@ def _empty_message(text):
                 "color": TEXT_SECONDARY,
                 "padding": "24px 0",
             },
-        ),
-    )
+        )
