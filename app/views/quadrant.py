@@ -859,4 +859,24 @@ def register_callbacks():
 
         # Velocity trend from pre-aggregated quarterly SPPD.
         trend_filters = {
-            k: v for k, v in filters.items() if
+            k: v for k, v in filters.items() if k not in ("start_quarter", "end_quarter")
+        }
+        quarterly_sppd_df = db.get_quarterly_sppd(trend_filters)
+        trend_df = calculate_velocity_trend_from_quarterly(quarterly_sppd_df)
+        sku_trend = trend_df[trend_df["sku"] == selected_sku]
+        trend_label = sku_trend["trend"].iloc[0].capitalize() if not sku_trend.empty else "N/A"
+
+        rows = [
+            {"label": "SPPD", "value": f"{sppd_val:.4f}"},
+            {"label": "ACV%", "value": fmt_pct(acv_val)},
+            {"label": "Total Dollars", "value": fmt_dollars(sku_dollars)},
+            {"label": "Door Count", "value": fmt_number(door_count)},
+            {"label": "Quadrant", "value": quadrant},
+            {"label": "Velocity Trend", "value": trend_label},
+        ]
+
+        return dark_callout_card(
+            title=product_name,
+            subtitle=product_line,
+            rows=rows,
+        )

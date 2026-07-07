@@ -510,4 +510,5 @@ def _empty_message(text):
                 "color": TEXT_SECONDARY,
                 "padding": "24px 0",
             },
-        )
+        ),
+    )

@@ -650,4 +650,6 @@ def _empty_message(text):
                 "fontSize": "17px",
                 "color": TEXT_SECONDARY,
                 "padding": "24px 0",
- 
+            },
+        ),
+    )

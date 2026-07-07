@@ -533,4 +533,22 @@ def _quarter_start_date(quarter_str):
         Q1 = Jan 1, Q2 = Apr 1, Q3 = Jul 1, Q4 = Oct 1.
     """
     q, year = quarter_str.split()
-    
+    q_num = int(q[1])
+    month = (q_num - 1) * 3 + 1
+    return f"{year}-{month:02d}-01"
+
+
+def _quarter_end_date(quarter_str):
+    """Convert 'Q4 2025' to the last day of that quarter as a date string.
+
+    Quarter boundaries:
+        Q1 = Mar 31, Q2 = Jun 30, Q3 = Sep 30, Q4 = Dec 31.
+    """
+    q, year = quarter_str.split()
+    q_num = int(q[1])
+    end_month = q_num * 3
+    if end_month in (3, 12):
+        end_day = 31
+    else:
+        end_day = 30
+    return f"{year}-{end_month:02d}-{end_day:02d}"
