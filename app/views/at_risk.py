@@ -281,7 +281,7 @@ _COLUMN_DEFS = [
         "width": 150,
         "cellStyle": {"function": """
             params.data.at_risk_tier === 'act_now'
-                ? {background: '#fde8e7', color: '#7a0906', fontWeight: 'bold'}
+                ? {background: '#fce8e7', color: '#7a0906', fontWeight: 'bold'}
                 : params.data.at_risk_tier === 'fix_or_rationalize'
                     ? {background: '#fdeee0', color: '#7a3d10', fontWeight: 'bold'}
                     : {background: '#b5e4d8', color: '#158f75', fontWeight: 'bold'}
