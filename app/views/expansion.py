@@ -78,8 +78,8 @@ _EXPANSION_DEFINITIONS = {
         ),
         (
             "Upside @ Median (table)",
-            "this SKU's incremental quarterly revenue from expanding to its "
-            "product line's median store count.",
+            "this SKU's incremental revenue (for the selected period) from "
+            "expanding to its product line's median store count.",
         ),
         (
             "Upside @ 75th (table)",
@@ -147,9 +147,10 @@ def build_expansion_data(filters):
     if hidden_gems.empty:
         return pd.DataFrame(), {}
 
-    # Compute expansion upside projections.
+    # Compute expansion upside projections for the selected period.
     upside_df = calculate_expansion_upside(
-        sppd_df, dist_df, stores_df, products_df, benchmarks_df
+        sppd_df, dist_df, stores_df, products_df, benchmarks_df,
+        days_in_period=days,
     )
 
     if upside_df.empty:
@@ -268,7 +269,7 @@ _COLUMN_DEFS = [
     {
         "field": "upside_median_dollars",
         "headerName": "Upside @ Median",
-        "headerTooltip": "Projected quarterly upside at peer-median door count",
+        "headerTooltip": "Projected upside at peer-median door count (same period as Current $)",
         "width": 140,
         "sort": "desc",
         "valueFormatter": {"function": "d3.format('$,.0f')(params.value)"},
@@ -279,14 +280,14 @@ _COLUMN_DEFS = [
     {
         "field": "upside_p75_dollars",
         "headerName": "Upside @ 75th",
-        "headerTooltip": "Projected quarterly upside at 75th-percentile door count",
+        "headerTooltip": "Projected upside at 75th-percentile door count (same period as Current $)",
         "width": 130,
         "valueFormatter": {"function": "d3.format('$,.0f')(params.value)"},
     },
     {
         "field": "upside_leader_dollars",
         "headerName": "Upside @ Leader",
-        "headerTooltip": "Projected quarterly upside at category-leader door count",
+        "headerTooltip": "Projected upside at category-leader door count (same period as Current $)",
         "width": 140,
         "valueFormatter": {"function": "d3.format('$,.0f')(params.value)"},
     },

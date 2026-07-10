@@ -116,8 +116,14 @@ def _get_default_qoq_quarters(filter_state):
 
 
 
-def _compute_period_metrics(scan_agg, dist_df, stores_df, products_df, quarter):
+def _compute_period_metrics(scan_agg, dist_df, stores_df, products_df, quarter,
+                            median_sppd=None, median_acv=None):
     """Compute SPPD, ACV%, and quadrant for a single quarter.
+
+    Uses the supplied global medians for quadrant classification so that
+    the dividing lines match the quadrant tab and a SKU's quadrant only
+    changes when its own metrics change, not because the period's median
+    shifted.
 
     Returns a DataFrame with columns: sku, sppd, acv_pct, quadrant,
     product_name, product_line, total_dollars, door_count.
@@ -149,8 +155,10 @@ def _compute_period_metrics(scan_agg, dist_df, stores_df, products_df, quarter):
             "product_name", "product_line", "total_dollars", "door_count",
         ])
 
-    median_sppd = merged["sppd"].median()
-    median_acv = merged["acv_pct"].median()
+    if median_sppd is None:
+        median_sppd = merged["sppd"].median()
+    if median_acv is None:
+        median_acv = merged["acv_pct"].median()
 
     merged["quadrant"] = merged.apply(
         lambda row: classify_quadrant(row["sppd"], row["acv_pct"], median_sppd, median_acv),
@@ -1032,12 +1040,18 @@ def register_callbacks():
 
             stores_df = db.get_stores()
             products_df = db.get_products()
+            global_medians_df = db.get_global_medians()
         except Exception:
             logger.exception("Migration chart callback failed")
             return _build_no_migration_figure(), []
 
-        p1_metrics = _compute_period_metrics(p1_scan_agg, p1_dist, stores_df, products_df, q1_label)
-        p2_metrics = _compute_period_metrics(p2_scan_agg, p2_dist, stores_df, products_df, q2_label)
+        g_sppd = global_medians_df["median_sppd"].iloc[0] if not global_medians_df.empty else None
+        g_acv = global_medians_df["median_acv"].iloc[0] if not global_medians_df.empty else None
+
+        p1_metrics = _compute_period_metrics(p1_scan_agg, p1_dist, stores_df, products_df, q1_label,
+                                             median_sppd=g_sppd, median_acv=g_acv)
+        p2_metrics = _compute_period_metrics(p2_scan_agg, p2_dist, stores_df, products_df, q2_label,
+                                             median_sppd=g_sppd, median_acv=g_acv)
 
         migration_df = _build_migration_df(p1_metrics, p2_metrics)
 
@@ -1094,14 +1108,20 @@ def register_callbacks():
 
             stores_df = db.get_stores()
             products_df = db.get_products()
+            global_medians_df = db.get_global_medians()
         except Exception:
             logger.exception("Migration detail card callback failed")
             return html.P("Could not load detail data.", style={
                 "color": TEXT_SECONDARY, "fontFamily": FONT_SANS, "fontSize": "14px",
             })
 
-        p1_metrics = _compute_period_metrics(p1_scan_agg, p1_dist, stores_df, products_df, q1_label)
-        p2_metrics = _compute_period_metrics(p2_scan_agg, p2_dist, stores_df, products_df, q2_label)
+        g_sppd = global_medians_df["median_sppd"].iloc[0] if not global_medians_df.empty else None
+        g_acv = global_medians_df["median_acv"].iloc[0] if not global_medians_df.empty else None
+
+        p1_metrics = _compute_period_metrics(p1_scan_agg, p1_dist, stores_df, products_df, q1_label,
+                                             median_sppd=g_sppd, median_acv=g_acv)
+        p2_metrics = _compute_period_metrics(p2_scan_agg, p2_dist, stores_df, products_df, q2_label,
+                                             median_sppd=g_sppd, median_acv=g_acv)
 
         p1_row = p1_metrics[p1_metrics["sku"] == selected_sku]
         p2_row = p2_metrics[p2_metrics["sku"] == selected_sku]

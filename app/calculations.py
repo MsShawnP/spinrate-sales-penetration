@@ -469,7 +469,8 @@ def calculate_at_risk_score(indexed_sppd_df, trend_df):
 
 # ── Expansion upside ────────────────────────────────────────────────
 
-def calculate_expansion_upside(sppd_df, dist_df, stores_df, products_df, benchmarks_df):
+def calculate_expansion_upside(sppd_df, dist_df, stores_df, products_df, benchmarks_df,
+                               days_in_period=91.0):
     """Project dollarized upside at three distribution benchmarks.
 
     For each SKU, projects incremental revenue if ACV% were raised to:
@@ -477,7 +478,7 @@ def calculate_expansion_upside(sppd_df, dist_df, stores_df, products_df, benchma
         2. 75th percentile ACV% (computed from peer SKUs)
         3. Category leader ACV% (max among peers)
 
-    Incremental units = (target_doors - current_doors) * current_sppd * 91
+    Incremental units = (target_doors - current_doors) * current_sppd * days_in_period
     Incremental dollars = incremental_units * wholesale_price
 
     Parameters
@@ -533,12 +534,9 @@ def calculate_expansion_upside(sppd_df, dist_df, stores_df, products_df, benchma
     for col in ["median_doors", "p75_doors", "leader_doors"]:
         result[col] = result[[col, "current_doors"]].max(axis=1)
 
-    # Days in a quarter for projection.
-    days = 91.0
-
     for target, label in [("median_doors", "median"), ("p75_doors", "p75"), ("leader_doors", "leader")]:
         incremental_doors = result[target] - result["current_doors"]
-        incremental_units = incremental_doors * result["current_sppd"] * days
+        incremental_units = incremental_doors * result["current_sppd"] * days_in_period
         result[f"upside_{label}_dollars"] = incremental_units * result["wholesale_price"].fillna(0)
 
     return result[[

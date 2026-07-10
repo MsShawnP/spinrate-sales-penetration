@@ -316,13 +316,13 @@ def definitions_panel(extra_section=None):
             "vertical axis, measured by SPPD.",
         ),
         _definition_item(
-            "ACV% (All-Commodity Volume)",
-            "the share of total retail sales volume, weighted by store "
-            "size, that comes from the stores carrying this SKU. Because "
-            "stores are weighted by their overall sales, being on the "
-            "shelf at large, high-traffic retailers counts for more than "
-            "the same shelf at small ones. Higher ACV% means broader, "
-            "more valuable distribution.",
+            "ACV% (Tier-Weighted Distribution)",
+            "the share of addressable store weight accounted for by "
+            "stores carrying this SKU. Stores are weighted by volume "
+            "tier (A = 3, B = 2, C = 1) rather than actual dollar "
+            "volume, so the metric is an approximation of traditional "
+            "ACV% using the tier data available. Higher ACV% means "
+            "broader, more valuable distribution.",
         ),
         _definition_item(
             "SPPD (Sales Per Point of Distribution, per day)",

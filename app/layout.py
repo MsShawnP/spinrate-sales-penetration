@@ -115,8 +115,18 @@ def _find_protagonists(scan_agg, dist_df, stores_df, products_df, filters=None,
     merged["dollars"] = merged["dollars"].fillna(0)
     merged["product_name"] = merged["product_name"].fillna(merged["sku"])
 
-    median_sppd = merged["sppd"].median()
-    median_acv = merged["acv_pct"].median()
+    try:
+        from app import db
+        global_medians_df = db.get_global_medians()
+        if not global_medians_df.empty:
+            median_sppd = global_medians_df["median_sppd"].iloc[0]
+            median_acv = global_medians_df["median_acv"].iloc[0]
+        else:
+            median_sppd = merged["sppd"].median()
+            median_acv = merged["acv_pct"].median()
+    except Exception:
+        median_sppd = merged["sppd"].median()
+        median_acv = merged["acv_pct"].median()
 
     protagonists = {}
 
@@ -425,7 +435,7 @@ def register_layout():
     app.layout = lailara_frame.wrap(
         inner_layout,
         tool_name="Spin Rate",
-        footer_note="Penetration × velocity quadrant analysis for CPG brands.",
+        footer_note="Which items deserve more shelf space, and which are fading?",
         no_container=True,
     )
 
