@@ -264,19 +264,23 @@ def _dividing_line_shapes(median_sppd, median_acv):
 # ── Arrow overlay figure ────────────────────────────────────────────
 
 
-def build_arrow_overlay(migration_df, q1_label, q2_label):
+def build_arrow_overlay(migration_df, q1_label, q2_label,
+                        median_sppd=None, median_acv=None):
     """Build the arrow overlay figure showing migration on the quadrant chart.
 
     Period 1 as ghost dots, Period 2 as solid dots, arrows between positions.
+    Dividing lines use the supplied global medians (matching quadrant
+    classification); falls back to Period 2 medians if not provided.
     """
     if migration_df.empty:
         return _build_no_migration_figure()
 
     fig = go.Figure()
 
-    # Compute medians from Period 2 (the current period).
-    median_sppd = migration_df["sppd_p2"].median()
-    median_acv = migration_df["acv_pct_p2"].median()
+    if median_sppd is None:
+        median_sppd = migration_df["sppd_p2"].median()
+    if median_acv is None:
+        median_acv = migration_df["acv_pct_p2"].median()
 
     movers = migration_df[migration_df["moved"]].copy()
     stayers = migration_df[~migration_df["moved"]].copy()
@@ -498,7 +502,8 @@ def build_arrow_overlay(migration_df, q1_label, q2_label):
 # ── Side-by-side figure ─────────────────────────────────────────────
 
 
-def build_side_by_side(migration_df, q1_label, q2_label):
+def build_side_by_side(migration_df, q1_label, q2_label,
+                       median_sppd=None, median_acv=None):
     """Build two quadrant charts side by side showing both periods."""
     from plotly.subplots import make_subplots
 
@@ -511,9 +516,10 @@ def build_side_by_side(migration_df, q1_label, q2_label):
         horizontal_spacing=0.08,
     )
 
-    # Period 1.
-    median_sppd_p1 = migration_df["sppd_p1"].median()
-    median_acv_p1 = migration_df["acv_pct_p1"].median()
+    # Period 1. Dividers use global medians when supplied so they match
+    # quadrant classification; fall back to per-period medians otherwise.
+    median_sppd_p1 = median_sppd if median_sppd is not None else migration_df["sppd_p1"].median()
+    median_acv_p1 = median_acv if median_acv is not None else migration_df["acv_pct_p1"].median()
 
     colors_p1 = migration_df["quadrant_p1"].map({
         QUADRANT_LABELS["star"]: MIGRATION_FAVORABLE,
@@ -542,8 +548,8 @@ def build_side_by_side(migration_df, q1_label, q2_label):
     ), row=1, col=1)
 
     # Period 2.
-    median_sppd_p2 = migration_df["sppd_p2"].median()
-    median_acv_p2 = migration_df["acv_pct_p2"].median()
+    median_sppd_p2 = median_sppd if median_sppd is not None else migration_df["sppd_p2"].median()
+    median_acv_p2 = median_acv if median_acv is not None else migration_df["acv_pct_p2"].median()
 
     colors_p2 = migration_df["quadrant_p2"].map({
         QUADRANT_LABELS["star"]: MIGRATION_FAVORABLE,
@@ -1060,11 +1066,13 @@ def register_callbacks():
 
         # Build the selected viz.
         if viz_mode == "side_by_side":
-            fig = build_side_by_side(migration_df, q1_label, q2_label)
+            fig = build_side_by_side(migration_df, q1_label, q2_label,
+                                     median_sppd=g_sppd, median_acv=g_acv)
         elif viz_mode == "sankey":
             fig = build_sankey(migration_df, q1_label, q2_label)
         else:
-            fig = build_arrow_overlay(migration_df, q1_label, q2_label)
+            fig = build_arrow_overlay(migration_df, q1_label, q2_label,
+                                      median_sppd=g_sppd, median_acv=g_acv)
 
         # Summary table for movers (shown in arrow mode when there are many).
         summary_children = []

@@ -435,7 +435,7 @@ def register_layout():
     app.layout = lailara_frame.wrap(
         inner_layout,
         tool_name="Spin Rate",
-        footer_note="Which items deserve more shelf space, and which are fading?",
+        footer_note="Which items deserve more shelf space, and which are fading? Data: Cinderhaven Provisions, a synthetic demonstration dataset (not a client).",
         no_container=True,
     )
 
