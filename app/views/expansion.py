@@ -27,7 +27,6 @@ from app.constants import (
     CANVAS,
     CHICAGO_20,
     FONT_SANS,
-    FONT_SERIF,
     HK_35,
     INK,
     SPPD_FORMULA,
@@ -385,12 +384,9 @@ def register_callbacks():
                     [
                         html.Span(
                             fmt_number(summary["count"]),
+                            className="ll-benchmark-value",
                             style={
-                                "fontFamily": FONT_SERIF,
-                                "fontSize": "36px",
-                                "fontWeight": "700",
                                 "color": INK,
-                                "letterSpacing": "-0.02em",
                             },
                         ),
                         html.Span(

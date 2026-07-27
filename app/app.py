@@ -54,7 +54,7 @@ _LOADING_OVERLAY = """
       }
       .sr-load-brand {
         font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
-        font-size: 28px;
+        font-size: 26px;              /* DS Brand-name step; 20px mobile below */
         font-weight: 700;
         color: #0d0d0d;                /* Ink */
         letter-spacing: -0.01em;
@@ -83,6 +83,9 @@ _LOADING_OVERLAY = """
           animation: none;
           border-color: #1f2e7a;       /* full navy ring, no motion */
         }
+      }
+      @media (max-width: 640px) {
+        .sr-load-brand { font-size: 20px; }
       }
     </style>
     <div id="spinrate-loading" role="status" aria-live="polite" aria-label="Loading Spin Rate">

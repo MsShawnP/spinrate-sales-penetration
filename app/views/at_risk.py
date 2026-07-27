@@ -27,7 +27,6 @@ from app.constants import (
     FAIL_BG,
     FAIL_TEXT,
     FONT_SANS,
-    FONT_SERIF,
     HK_35,
     HK_85,
     INK,
@@ -362,10 +361,8 @@ def layout():
                 [
                     html.H3(
                         "At-Risk Items",
+                        className="ll-section-title",
                         style={
-                            "fontFamily": FONT_SERIF,
-                            "fontSize": "22px",
-                            "fontWeight": "700",
                             "color": INK,
                             "marginBottom": "8px",
                         },
@@ -382,10 +379,8 @@ def layout():
                 [
                     html.H3(
                         "Watchlist",
+                        className="ll-section-title",
                         style={
-                            "fontFamily": FONT_SERIF,
-                            "fontSize": "22px",
-                            "fontWeight": "700",
                             "color": INK,
                             "marginTop": "32px",
                             "marginBottom": "8px",
@@ -579,12 +574,9 @@ def _build_summary(summary):
                 [
                     html.Span(
                         fmt_number(act_now + fix_or_rat),
+                        className="ll-benchmark-value",
                         style={
-                            "fontFamily": FONT_SERIF,
-                            "fontSize": "36px",
-                            "fontWeight": "700",
                             "color": INK,
-                            "letterSpacing": "-0.02em",
                         },
                     ),
                     html.Span(

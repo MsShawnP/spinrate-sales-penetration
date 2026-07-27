@@ -161,14 +161,10 @@ def hero_card(value, label, accent=None):
         [
             html.Span(
                 value,
+                className="ll-benchmark-value",
                 style={
-                    "fontFamily": FONT_SERIF,
-                    "fontSize": "28px",
-                    "fontWeight": "700",
                     "color": INK,
-                    "letterSpacing": "-0.02em",
                     "display": "block",
-                    "lineHeight": "1.2",
                 },
             ),
             html.Span(
