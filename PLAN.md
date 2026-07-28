@@ -37,3 +37,28 @@ Loading state + audit remediation shipped. Run `/ce:compound`.
 - [x] Deploy performance fix to production (shipped with the loading-state deploy)
 - [x] Branded pre-hydration loading state for cold-link first paint (deployed)
 - [ ] `/ce:compound`
+
+### Un-pinned defect — tests are waiting, fix is not written
+
+Added 2026-07-28 by the FIX-LIST cross-repo test sweep. Strict-xfail tests
+assert the corrected behaviour, so the suite fails loudly the moment the fix
+lands and the marker has to come off. Do not remove a marker without doing the
+fix.
+
+- [ ] **Migration's two periods get identical distribution.** `app/db.py:316` —
+      `get_distribution()` builds its WHERE clause from `retailers` and
+      `region` only and hardcodes `fd.is_active = TRUE`. It selects
+      `authorized_date` and `deauthorized_date` (`:332-333`) and never
+      constrains on them, so every SKU carries the same ACV% in both periods
+      and 8 of the 12 ordered quadrant transitions are unreachable.
+      `is_active = TRUE` compounds it: a SKU deauthorized inside the window is
+      dropped from both periods rather than shown as a delisting. Add a
+      date-window clause. Tests: `tests/test_migration.py` —
+      `test_query_constrains_on_the_authorization_window`,
+      `test_query_does_not_hardcode_is_active`. The `two_period_metrics`
+      fixture hands the same frame to both periods on purpose — it reproduces
+      production; update it once the query is fixed.
+      Consider hiding the Migration tab until this lands.
+      Related, not fatal: `quadrant.py:693` and `expansion.py:110` also call
+      `get_distribution(filters)`, so ACV% is inert to the date filter there
+      too — defensible as a current-state reading on a snapshot tab.

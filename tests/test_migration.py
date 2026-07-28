@@ -8,6 +8,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
+from app import db
 from app.calculations import calculate_acv_pct, calculate_sppd, classify_quadrant, days_in_quarter_range
 
 
@@ -126,7 +127,14 @@ def two_period_metrics(
     period1_scan_df, period2_scan_df,
     sample_dist_df, sample_stores_df, sample_products_df,
 ):
-    """Compute period metrics for both periods and return migration_df."""
+    """Compute period metrics for both periods and return migration_df.
+
+    NOTE: both periods are handed the SAME sample_dist_df. That mirrors what
+    the app actually does today -- db.get_distribution() ignores the date range
+    (see the un-pinned test below) -- so this fixture reproduces production
+    rather than an ideal. It cannot detect the defect; the test at the bottom
+    of this file is what constrains it.
+    """
     p1 = _compute_period_metrics(
         _agg_scan(period1_scan_df), sample_dist_df, sample_stores_df, sample_products_df, "Q3 2025"
     )
@@ -555,3 +563,50 @@ def _extract_text(component):
         elif children is not None:
             texts.extend(_extract_text(children))
     return texts
+
+
+# ── Un-pinned: distribution is inert to the date range ───────────────
+# Bug: app/db.py:316 -- get_distribution() builds its WHERE clause from
+# `retailers` and `region` only and hardcodes `fd.is_active = TRUE`. It selects
+# authorized_date and deauthorized_date (:332-333) and then never constrains on
+# them, so both of Migration's periods receive an identical frame: every SKU
+# has the same ACV% in Q3 and Q4, and 8 of the 12 ordered quadrant transitions
+# are unreachable. `is_active = TRUE` compounds it -- a SKU deauthorized during
+# the window is dropped from both periods rather than shown as a delisting.
+#
+# The two_period_metrics fixture above hands the same frame to both periods,
+# which reproduces the bug rather than catching it. This test constrains the
+# query itself: it inspects the SQL rather than needing a live database.
+# Strict-xfail, so it XPASSes and fails the suite the moment the date window
+# lands and the marker has to come off.
+# Tracked in PLAN.md -- "Migration's two periods get identical distribution".
+
+class TestDistributionHonorsTheDateRange:
+    def _captured_sql(self, filters):
+        db.clear_cache()
+        with patch.object(db, "_execute_query", return_value=pd.DataFrame()) as q:
+            db.get_distribution(filters)
+        assert q.call_count == 1, "get_distribution did not reach the query layer"
+        return q.call_args[0][0]
+
+    @pytest.mark.xfail(strict=True, reason="db.py:316 builds no date clause")
+    def test_query_constrains_on_the_authorization_window(self):
+        sql = self._captured_sql({
+            "start_date": "2025-07-01",
+            "end_date": "2025-09-30",
+        })
+        assert "authorized_date" in sql.split("WHERE", 1)[-1], (
+            "authorized_date is selected but never filtered on, so every period "
+            "gets the same distribution frame"
+        )
+
+    @pytest.mark.xfail(strict=True, reason="db.py:316 hardcodes fd.is_active = TRUE")
+    def test_query_does_not_hardcode_is_active(self):
+        sql = self._captured_sql({
+            "start_date": "2025-07-01",
+            "end_date": "2025-09-30",
+        })
+        assert "fd.is_active = TRUE" not in sql, (
+            "a SKU deauthorized inside the window is dropped from both periods, "
+            "so a delisting can never appear as a transition"
+        )
