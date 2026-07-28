@@ -1215,7 +1215,7 @@ def _build_movers_table(movers_df, q1_label, q2_label):
         ]))
 
     return [
-        html.H4(
+        html.H3(
             "All Quadrant Movers",
             className="ll-section-title",
             style={"color": INK, "marginTop": "24px", "marginBottom": "8px"},
