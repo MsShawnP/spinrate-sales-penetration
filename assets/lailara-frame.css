@@ -1,10 +1,15 @@
 /*
- * lailara-frame.css — v1.2.0
+ * lailara-frame.css — v1.3.0
  * Brand frame and layout kit for Lailara LLC tools.
  * Every lailarallc.com subdomain tool includes this file.
  *
  * Source of truth: LAILARA_DESIGN_SYSTEM.md v2 (May 2026)
  * Live-site reference: lailarallc.com globals.css (max-width 1200px, nav 80px)
+ *
+ * v1.3.0 — Base layer (2026-07-27). The frame styled .lailara-page but never
+ * body, so unstyled text fell back to Times New Roman and black, and the warm
+ * canvas did not cover the page behind the shell. Every tool vendoring an
+ * earlier release inherits that bug — re-vendor upstream before syncing.
  *
  * v1.2.0 — Type-scale reconciliation (2026-07-27). Wordmark corrected to the
  * DS Brand-name step (26px/20px, was 22px). Added the DS display type-scale as
@@ -193,6 +198,11 @@
   --ll-london-5:       #0d0d0d;
 
   /* Dark card tokens */
+  /* Print paper. Not a palette family — the DS replaces London-100 with the
+     warm canvas for screen, and real paper supplies its own warmth. Declared
+     here so the print block has a token instead of a raw literal. */
+  --ll-paper:          #ffffff;
+
   --ll-card-bg:        #1a1a1a;
   --ll-card-text:      #ffffff;
   --ll-card-subtitle:  #d8d8d8;
@@ -230,6 +240,25 @@
   --ll-ease-out:    cubic-bezier(0.0, 0.0, 0.2, 1);
   --ll-ease-in:     cubic-bezier(0.4, 0.0, 1, 1);
   --ll-ease-in-out: cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+/* ── Base ─────────────────────────────────────────────────────────────────── */
+/* The frame styled .lailara-page but never body, so anything a tool did not
+ * style explicitly inherited the browser defaults instead of the brand: serif
+ * fallback (Times New Roman) for type, black for text, and white behind the
+ * page shell wherever it does not reach.  DS: body is Source Sans 3 on the warm
+ * canvas, and the serif/sans boundary is strict.
+ * Deliberately sets no font-size — tools size their own text, and imposing the
+ * 17px body step here would reflow every consumer of this frame. */
+
+html,
+body {
+  background-color: var(--ll-canvas);
+}
+
+body {
+  font-family: var(--ll-sans);
+  color: var(--ll-london-20);
 }
 
 /* ── Page shell ───────────────────────────────────────────────────────────── */
@@ -496,7 +525,7 @@
   body,
   .lailara-page,
   .lailara-container {
-    background-color: #ffffff !important;
+    background-color: var(--ll-paper) !important;
   }
 
   .lailara-container {
