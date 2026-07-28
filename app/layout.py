@@ -379,7 +379,7 @@ def _render_narrative(protagonists):
 def _protagonist_block(label, text):
     return html.Div(
         [
-            html.H3(label, className="narrative-archetype-label"),
+            html.H3(label, className="narrative-archetype-label ll-section-title"),
             html.P(text, className="narrative-body"),
         ],
         className="narrative-protagonist",

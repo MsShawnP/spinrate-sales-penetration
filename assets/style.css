@@ -307,10 +307,9 @@
     border-left: 3px solid var(--ll-london-85);
 }
 
+/* Type comes from .ll-section-title (frame >= v1.2.0), applied alongside this
+   class in layout.py. Only the non-type properties live here. */
 .narrative-archetype-label {
-    font-family: var(--ll-serif);
-    font-size: 18px;
-    font-weight: 700;
     color: var(--ll-london-5);
     margin: 0 0 4px 0;
 }

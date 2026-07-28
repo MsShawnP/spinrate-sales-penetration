@@ -1217,8 +1217,8 @@ def _build_movers_table(movers_df, q1_label, q2_label):
     return [
         html.H4(
             "All Quadrant Movers",
-            style={"fontFamily": FONT_SERIF, "fontSize": "18px", "color": INK,
-                   "marginTop": "24px", "marginBottom": "8px"},
+            className="ll-section-title",
+            style={"color": INK, "marginTop": "24px", "marginBottom": "8px"},
         ),
         html.Table(
             [html.Thead(header), html.Tbody(body_rows)],

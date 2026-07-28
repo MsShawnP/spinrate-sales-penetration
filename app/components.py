@@ -12,7 +12,6 @@ from app.constants import (
     CARD_TEXT,
     FAIL_BG,
     FONT_SANS,
-    FONT_SERIF,
     GRIDLINE,
     INK,
     RED_42,
@@ -276,11 +275,11 @@ def _definition_paragraph(text):
     )
 
 
-# Serif sub-heading for a section inside definitions_panel().
+# Serif sub-heading for a section inside definitions_panel(). Type comes from
+# the frame's .ll-section-title (22px/18px) applied as a className alongside
+# this dict -- an inline fontSize cannot carry the mobile step.
+_DEFINITIONS_HEADING_CLASS = "ll-section-title"
 _DEFINITIONS_HEADING_STYLE = {
-    "fontFamily": FONT_SERIF,
-    "fontSize": "18px",
-    "fontWeight": "700",
     "color": INK,
     "margin": "0 0 12px 0",
 }
@@ -298,7 +297,11 @@ def definitions_panel(extra_section=None):
     heading_style = _DEFINITIONS_HEADING_STYLE
 
     children = [
-        html.H3("What the axes mean", style=heading_style),
+        html.H3(
+            "What the axes mean",
+            className=_DEFINITIONS_HEADING_CLASS,
+            style=heading_style,
+        ),
         _definition_item(
             "Sales Penetration",
             "how widely a product is distributed: the breadth of its "
@@ -331,6 +334,7 @@ def definitions_panel(extra_section=None):
         ),
         html.H3(
             "The four quadrants",
+            className=_DEFINITIONS_HEADING_CLASS,
             style={**heading_style, "marginTop": "20px"},
         ),
         _definition_paragraph(
@@ -369,6 +373,7 @@ def definitions_panel(extra_section=None):
         children.append(
             html.H3(
                 extra_section["heading"],
+                className=_DEFINITIONS_HEADING_CLASS,
                 style={**heading_style, "marginTop": "20px"},
             )
         )
