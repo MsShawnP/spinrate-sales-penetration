@@ -63,7 +63,7 @@ fix.
       `get_distribution(filters)`, so ACV% is inert to the date filter there
       too — defensible as a current-state reading on a snapshot tab.
 
-## Migration distribution window (fixed 2026-07-28, needs one DB run)
+## Migration distribution window (fixed and DB-verified 2026-07-28)
 
 `get_distribution()` built its WHERE clause from `retailers` and `region` only
 and hardcoded `fd.is_active = TRUE`, ignoring `start_quarter`/`end_quarter`.
@@ -87,13 +87,60 @@ retailer and region. `tests/test_db.py` passes 5/5 before and after. Seven
 tests replace the two strict-xfails; the load-bearing one asserts that two
 periods cannot produce the same parameters.
 
-STILL TO DO before this ships:
-1. Run against the live Postgres. The SQL is unverified against real data --
-   no query was ever executed. Confirm Migration now shows non-vertical arrows
-   and that entries/exits appear once the inner join is also fixed.
-2. Blast radius: `quadrant.py:693` and `expansion.py:110` call the same
-   function with the user's date range, so ACV% on those tabs becomes
-   period-aware too. That is the correct behaviour, but it is a visible change
-   to two tabs beyond Migration. Look at both before deploying.
-3. `two_period_metrics` still hands one dist frame to both periods. A second
-   frame would let migration mechanics be tested against real ACV% movement.
+Verified against the live Postgres 2026-07-28 via `flyctl proxy`, read-only,
+through the app's own `db.get_distribution()` rather than hand-written SQL:
+
+| window | rows | SKUs with ACV% movement | exits | entries |
+|---|---|---|---|---|
+| Q3 2025 -> Q4 2025 (**shipped default**) | 9,164 -> 9,176 | **5 of 50** | 0 | 12 |
+| Q3 2024 -> Q4 2024 | 9,223 -> 9,135 | — | 88 | 0 |
+| Q2 2024 -> Q3 2024 | 9,404 -> 9,223 | **45 of 50** | 181 | 0 |
+
+Q3 and Q4 2025 no longer return identical frames (`equals()` False). Delistings
+surface correctly in any window that spans one.
+
+**READ THIS BEFORE CONCLUDING THE FIX DIDN'T LAND.** The fix is verified in 2024
+windows and *cannot be observed at the default period*, because the data has no
+2025 deauthorizations. Do not read an unchanged Migration tab as evidence the
+fix regressed or was reverted. At Q3->Q4 2025, ACV% moves at most 0.47pp,
+crosses no median, and all six observed transitions are ones that were already
+reachable under the bug (the within-ACV-side moves). The previously-impossible
+class appears only in 2024 windows: `Wide but Dead -> Question Marks`, 3 SKUs,
+a genuine ACV-median crossing.
+
+Blast radius: nil at first load. With the shipped `DEFAULT_FILTER_STATE`
+(Q1-Q4 2025), `get_distribution` returns a frame byte-identical to the old
+`is_active = TRUE` snapshot -- 9,176 rows, `equals()` True. Quadrant and
+Expansion are unchanged on open. They diverge only on a historical range
+(Q1-Q4 2024: +464/-49 store-SKUs; 2023: +816/-49), which is correct behaviour.
+
+### Open: the demo data has no 2025 deauthorizations (data gap, not code)
+
+All 816 deauthorizations fall between 2023-04-18 and 2024-11-10;
+`DEFAULT_FILTER_STATE` is Q1-Q4 2025. So the tab whose entire premise is "what
+moved between these two periods" opens showing that essentially nothing moved:
+45 of 50 arrows strictly vertical, zero exits, 0.47pp maximum ACV% move.
+
+Before this fix the tab was confidently wrong. It is now correctly empty. Both
+fail the same reader, and a prospect opening Spin Rate sees neither the
+delisting story the tab was built to tell nor any reason to trust it. The
+story exists only in a historical range nobody will select.
+
+This is a data-generation gap and could not have been found from source review.
+Two ways to close it:
+
+- [ ] **Preferred:** extend deauthorizations into 2025 in the seed so a demo
+      tool actually demonstrates. Touches canonical figures -- change protocol
+      + canonical-figures impact check + Shawn's approval.
+- [ ] Or move `DEFAULT_FILTER_STATE` to a window that has movement. Cheaper,
+      but it makes the shipped default a historical period, which reads oddly
+      on a tool presented as current-state.
+
+Still open, unrelated to the above:
+
+- [ ] `two_period_metrics` still hands one dist frame to both periods. A second
+      frame would let migration mechanics be tested against real ACV% movement.
+- [ ] The inner join at `app/views/migration.py:186` still drops entries and
+      exits, so the 12 Q4-2025 entries above cannot appear as Sankey nodes yet.
+      Separate [High]; the distribution window is a precondition for it, not a
+      substitute.
