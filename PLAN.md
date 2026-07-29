@@ -62,3 +62,38 @@ fix.
       Related, not fatal: `quadrant.py:693` and `expansion.py:110` also call
       `get_distribution(filters)`, so ACV% is inert to the date filter there
       too — defensible as a current-state reading on a snapshot tab.
+
+## Migration distribution window (fixed 2026-07-28, needs one DB run)
+
+`get_distribution()` built its WHERE clause from `retailers` and `region` only
+and hardcoded `fd.is_active = TRUE`, ignoring `start_quarter`/`end_quarter`.
+Both of Migration's periods therefore received an identical frame: `acv_pct_p1`
+equalled `acv_pct_p2` for every SKU, arrows were strictly vertical, the ACV term
+in `magnitude` was permanently zero, and only Stars <-> Wide-but-Dead and Hidden
+Gems <-> Question Marks were reachable -- 8 of 12 ordered transitions impossible.
+The narrative printed the consequence in plain sight, rendering the same
+distribution percentage twice in a sentence asserting movement.
+
+Now filtered on the authorization window overlapping the period:
+`authorized_date <= quarter_end AND (deauthorized_date IS NULL OR
+deauthorized_date >= quarter_start)`. With no period supplied it falls back to
+`is_active = TRUE`, so unfiltered callers are unchanged. `_cache_key` already
+hashes every filter key, so the two periods get distinct cache entries.
+
+Verified without a database by patching `_execute_query`: Q3 yields params
+['2025-09-30','2025-07-01'] and Q4 ['2025-12-31','2025-10-01'], the no-period
+path still emits `is_active = TRUE`, and the clause composes correctly with
+retailer and region. `tests/test_db.py` passes 5/5 before and after. Seven
+tests replace the two strict-xfails; the load-bearing one asserts that two
+periods cannot produce the same parameters.
+
+STILL TO DO before this ships:
+1. Run against the live Postgres. The SQL is unverified against real data --
+   no query was ever executed. Confirm Migration now shows non-vertical arrows
+   and that entries/exits appear once the inner join is also fixed.
+2. Blast radius: `quadrant.py:693` and `expansion.py:110` call the same
+   function with the user's date range, so ACV% on those tabs becomes
+   period-aware too. That is the correct behaviour, but it is a visible change
+   to two tabs beyond Migration. Look at both before deploying.
+3. `two_period_metrics` still hands one dist frame to both periods. A second
+   frame would let migration mechanics be tested against real ACV% movement.

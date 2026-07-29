@@ -129,11 +129,12 @@ def two_period_metrics(
 ):
     """Compute period metrics for both periods and return migration_df.
 
-    NOTE: both periods are handed the SAME sample_dist_df. That mirrors what
-    the app actually does today -- db.get_distribution() ignores the date range
-    (see the un-pinned test below) -- so this fixture reproduces production
-    rather than an ideal. It cannot detect the defect; the test at the bottom
-    of this file is what constrains it.
+    NOTE: both periods are handed the SAME sample_dist_df. That is now a
+    limitation of this fixture, not of the app -- get_distribution() honours the
+    date range as of 2026-07-28. These cases therefore exercise the mechanics of
+    _build_migration_df and _compute_period_metrics, not distribution movement.
+    A second dist frame would let the migration mechanics be tested against
+    actual ACV% change; tracked in PLAN.md.
     """
     p1 = _compute_period_metrics(
         _agg_scan(period1_scan_df), sample_dist_df, sample_stores_df, sample_products_df, "Q3 2025"
@@ -565,48 +566,70 @@ def _extract_text(component):
     return texts
 
 
-# ── Un-pinned: distribution is inert to the date range ───────────────
-# Bug: app/db.py:316 -- get_distribution() builds its WHERE clause from
-# `retailers` and `region` only and hardcodes `fd.is_active = TRUE`. It selects
-# authorized_date and deauthorized_date (:332-333) and then never constrains on
-# them, so both of Migration's periods receive an identical frame: every SKU
-# has the same ACV% in Q3 and Q4, and 8 of the 12 ordered quadrant transitions
-# are unreachable. `is_active = TRUE` compounds it -- a SKU deauthorized during
-# the window is dropped from both periods rather than shown as a delisting.
+# ── Distribution honours the selected period ───────────────────
+# get_distribution() used to build its WHERE clause from `retailers` and
+# `region` only and hardcode `fd.is_active = TRUE`. It selected authorized_date
+# and deauthorized_date and never constrained on them, so both of Migration's
+# periods received an identical frame: every SKU carried the same ACV% in Q3
+# and Q4, and 8 of the 12 ordered quadrant transitions were unreachable.
+# `is_active = TRUE` compounded it -- a SKU deauthorized inside the window was
+# dropped from both periods rather than shown as a delisting.
 #
-# The two_period_metrics fixture above hands the same frame to both periods,
-# which reproduces the bug rather than catching it. This test constrains the
-# query itself: it inspects the SQL rather than needing a live database.
-# Strict-xfail, so it XPASSes and fails the suite the moment the date window
-# lands and the marker has to come off.
-# Tracked in PLAN.md -- "Migration's two periods get identical distribution".
+# These tests constrain the query itself by inspecting the SQL and params, so
+# they need no live database. The invariant that matters is the last one: two
+# different periods must not produce the same parameters.
 
 class TestDistributionHonorsTheDateRange:
-    def _captured_sql(self, filters):
+    def _captured(self, filters):
         db.clear_cache()
         with patch.object(db, "_execute_query", return_value=pd.DataFrame()) as q:
             db.get_distribution(filters)
         assert q.call_count == 1, "get_distribution did not reach the query layer"
-        return q.call_args[0][0]
+        return q.call_args[0]
 
-    @pytest.mark.xfail(strict=True, reason="db.py:316 builds no date clause")
+    Q3 = {"start_quarter": "Q3 2025", "end_quarter": "Q3 2025"}
+    Q4 = {"start_quarter": "Q4 2025", "end_quarter": "Q4 2025"}
+
     def test_query_constrains_on_the_authorization_window(self):
-        sql = self._captured_sql({
-            "start_date": "2025-07-01",
-            "end_date": "2025-09-30",
-        })
+        sql, _ = self._captured(self.Q3)
         assert "authorized_date" in sql.split("WHERE", 1)[-1], (
             "authorized_date is selected but never filtered on, so every period "
             "gets the same distribution frame"
         )
 
-    @pytest.mark.xfail(strict=True, reason="db.py:316 hardcodes fd.is_active = TRUE")
-    def test_query_does_not_hardcode_is_active(self):
-        sql = self._captured_sql({
-            "start_date": "2025-07-01",
-            "end_date": "2025-09-30",
-        })
+    def test_query_does_not_hardcode_is_active_when_a_period_is_given(self):
+        sql, _ = self._captured(self.Q3)
         assert "fd.is_active = TRUE" not in sql, (
             "a SKU deauthorized inside the window is dropped from both periods, "
             "so a delisting can never appear as a transition"
         )
+
+    def test_open_ended_authorizations_are_kept(self):
+        sql, _ = self._captured(self.Q3)
+        assert "deauthorized_date IS NULL" in sql, (
+            "a still-authorized store-SKU has a NULL deauthorized_date and must "
+            "not be excluded by the window test"
+        )
+
+    def test_window_bounds_are_the_quarter_edges(self):
+        _, params = self._captured(self.Q3)
+        assert params == ["2025-09-30", "2025-07-01"]
+
+    def test_two_periods_do_not_produce_the_same_query(self):
+        """The invariant. Everything above can hold while this one fails."""
+        assert self._captured(self.Q3)[1] != self._captured(self.Q4)[1], (
+            "Q3 and Q4 produced identical parameters, so Migration is comparing "
+            "one snapshot against itself"
+        )
+
+    def test_falls_back_to_current_state_without_a_period(self):
+        sql, params = self._captured({})
+        assert "fd.is_active = TRUE" in sql and params == []
+
+    def test_period_composes_with_retailer_and_region(self):
+        sql, params = self._captured({
+            **self.Q3, "retailers": ["Kroger"], "region": "Southeast",
+        })
+        where = sql.split("WHERE", 1)[-1]
+        assert "authorized_date" in where and "chain_name IN" in where
+        assert params == ["2025-09-30", "2025-07-01", "Kroger", "Southeast"]

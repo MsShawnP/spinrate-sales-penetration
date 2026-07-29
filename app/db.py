@@ -313,11 +313,29 @@ def get_distribution(filters=None):
     filters = filters or {}
 
     def _load():
-        clauses = ["fd.is_active = TRUE"]
+        clauses = []
         params = []
 
+        start_q = filters.get("start_quarter")
+        end_q = filters.get("end_quarter")
         retailers = filters.get("retailers")
         region = filters.get("region")
+
+        if start_q and end_q:
+            # A store-SKU counts as authorized for the period if its
+            # authorization window overlaps the period at all. Anchoring on
+            # is_active instead returns the current snapshot for every period,
+            # which made Migration compare two identical distribution frames --
+            # and it drops a SKU deauthorized inside the window from both
+            # periods, so a delisting could never appear as a transition.
+            clauses.append("fd.authorized_date <= %s")
+            params.append(_quarter_end_date(end_q))
+            clauses.append(
+                "(fd.deauthorized_date IS NULL OR fd.deauthorized_date >= %s)"
+            )
+            params.append(_quarter_start_date(start_q))
+        else:
+            clauses.append("fd.is_active = TRUE")
 
         if retailers:
             placeholders = ", ".join(["%s"] * len(retailers))
