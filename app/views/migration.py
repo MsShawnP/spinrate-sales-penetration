@@ -738,6 +738,18 @@ def layout():
             dcc.Store(id="migration-viz-mode", storage_type="memory", data="arrows"),
             dcc.Store(id="migration-selected-sku", storage_type="memory"),
 
+            # Data-window note: deauthorizations end 2024-11-10, so recent
+            # quarter pairs migrate on velocity alone. Expected, not a defect
+            # (CINDERHAVEN_CANONICAL.md, empty-in-default-period class).
+            html.P(
+                "Note: distribution events in this dataset end 2024-11-10 — "
+                "quarter pairs after that migrate on velocity alone. That is "
+                "the data window, not a lack of movement.",
+                style={"fontFamily": FONT_SANS, "fontSize": "13px",
+                       "color": TEXT_SECONDARY, "maxWidth": "660px",
+                       "margin": "0 0 8px"},
+            ),
+
             # Customize toggle button.
             html.Div(
                 [

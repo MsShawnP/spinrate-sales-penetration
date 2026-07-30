@@ -408,6 +408,27 @@ def _fallback_narrative():
     )
 
 
+def _build_hero():
+    """Finding-first hero above the tabs (30-second test)."""
+    return html.Div(
+        [
+            html.H1(
+                "Which items deserve more shelf space — and which are fading?",
+                className="hero-headline",
+            ),
+            html.P(
+                "Total sales hide whether growth comes from being in more stores "
+                "or selling faster in the stores you already have. Spin Rate splits "
+                "every item's trend into distribution reach and selling speed, so "
+                "shelf-space, velocity-fix, and retire calls stop being guesses. "
+                "Retail scan data, CY2023–2025 · 50 SKUs · 640 stores.",
+                className="hero-subhead",
+            ),
+        ],
+        className="tool-hero",
+    )
+
+
 # ── register_layout ──────────────────────────────────────────────
 
 
@@ -421,6 +442,7 @@ def register_layout():
             dcc.Store(id="selected-sku", storage_type="memory"),
             html.Div(
                 [
+                    _build_hero(),
                     _build_tabs(),
                     build_filter_bar(),
                     build_empty_state(),
