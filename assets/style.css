@@ -278,7 +278,7 @@
 }
 
 .narrative-content {
-    max-width: 660px;
+    max-width: var(--ll-body-max-width, 720px);
 }
 
 .narrative-title {
@@ -298,7 +298,7 @@
     color: var(--ll-london-20);
     line-height: 1.6;
     margin: 0 0 12px 0;
-    max-width: 660px;
+    max-width: var(--ll-body-max-width, 720px);
 }
 
 .narrative-protagonist {
@@ -471,7 +471,7 @@ html, body {
     font-size: 17px;
     line-height: 1.6;
     color: #333333;
-    max-width: 660px;
+    max-width: var(--ll-body-max-width, 720px);
     margin: 0 0 8px;
 }
 @media (max-width: 640px) {
