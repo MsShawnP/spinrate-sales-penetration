@@ -56,7 +56,7 @@ _EXPANSION_DEFINITIONS = {
     "items": [
         (
             "Median benchmark (headline card)",
-            "total quarterly revenue these hidden gems would add if each "
+            "total revenue over the selected window these hidden gems would add if each "
             "expanded to the median store count of its product line: the "
             "realistic \"catch up to typical\" target.",
         ),
@@ -261,15 +261,15 @@ _COLUMN_DEFS = [
     },
     {
         "field": "current_dollars",
-        "headerName": "Current $",
-        "width": 100,
+        "headerName": "Current $ (retail scan)",
+        "width": 130,
         "valueFormatter": {"function": "d3.format('$,.0f')(params.value)"},
     },
     {
         "field": "upside_median_dollars",
-        "headerName": "Upside @ Median",
-        "headerTooltip": "Projected upside at peer-median door count (same period as Current $)",
-        "width": 140,
+        "headerName": "Upside @ Median (wholesale)",
+        "headerTooltip": "Projected upside at peer-median door count, valued at wholesale price (same period as Current $)",
+        "width": 160,
         "sort": "desc",
         "valueFormatter": {"function": "d3.format('$,.0f')(params.value)"},
         "cellStyle": {
@@ -278,16 +278,16 @@ _COLUMN_DEFS = [
     },
     {
         "field": "upside_p75_dollars",
-        "headerName": "Upside @ 75th",
-        "headerTooltip": "Projected upside at 75th-percentile door count (same period as Current $)",
-        "width": 130,
+        "headerName": "Upside @ 75th (wholesale)",
+        "headerTooltip": "Projected upside at 75th-percentile door count, valued at wholesale price (same period as Current $)",
+        "width": 150,
         "valueFormatter": {"function": "d3.format('$,.0f')(params.value)"},
     },
     {
         "field": "upside_leader_dollars",
-        "headerName": "Upside @ Leader",
-        "headerTooltip": "Projected upside at category-leader door count (same period as Current $)",
-        "width": 140,
+        "headerName": "Upside @ Leader (wholesale)",
+        "headerTooltip": "Projected upside at category-leader door count, valued at wholesale price (same period as Current $)",
+        "width": 160,
         "valueFormatter": {"function": "d3.format('$,.0f')(params.value)"},
     },
 ]
@@ -423,10 +423,13 @@ def register_callbacks():
         # Annotation: if total median upside is significant, call it out.
         annotation = []
         if summary["total_median_upside"] > 0:
+            start_q = filters.get("start_quarter", "Q1 2025")
+            end_q = filters.get("end_quarter", "Q4 2025")
+            window_label = start_q if start_q == end_q else f"{start_q}–{end_q}"
             annotation = annotation_callout(
                 f"At median distribution levels, these {fmt_number(summary['count'])} "
                 f"hidden gems represent {fmt_dollars(summary['total_median_upside'])} "
-                f"in quarterly upside. The median benchmark uses each SKU's current "
+                f"in upside over {window_label}. The median benchmark uses each SKU's current "
                 f"SPPD projected to peer-median door counts within its product line."
             )
 

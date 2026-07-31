@@ -179,10 +179,10 @@ class TestDefaultQoQ:
 
     def test_qoq_first_quarter(self):
         """When end_quarter is the first available, both should be the same."""
-        filters = {"end_quarter": "Q1 2024"}
+        filters = {"end_quarter": "Q1 2023"}
         q1, q2 = _get_default_qoq_quarters(filters)
-        assert q1 == "Q1 2024"
-        assert q2 == "Q1 2024"
+        assert q1 == "Q1 2023"
+        assert q2 == "Q1 2023"
 
 
 # ── Period metrics computation ───────────────────────────────────────

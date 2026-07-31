@@ -6,7 +6,7 @@ from dash import Input, Output, State, callback, dcc, html, no_update
 
 QUARTER_OPTIONS = [
     {"label": f"Q{q} {y}", "value": f"Q{q} {y}"}
-    for y in range(2024, 2027)
+    for y in range(2023, 2026)
     for q in [1, 2, 3, 4]
 ]
 

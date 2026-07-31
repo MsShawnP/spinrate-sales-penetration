@@ -300,7 +300,7 @@ def _render_narrative(protagonists):
                 f"{p['product_name']} sits in {fmt_pct(p['acv_pct'])} of weighted "
                 f"distribution and moves at {p['sppd']:.4f} units per store per day — "
                 f"above the category median on both axes. "
-                f"At {fmt_dollars(p['dollars'])} this quarter across "
+                f"At {fmt_dollars(p['dollars'])} over the selected period across "
                 f"{fmt_number(p['door_count'])} doors, the priority is protecting "
                 f"supply and negotiating for additional facings.",
             )
