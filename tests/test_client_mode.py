@@ -89,6 +89,41 @@ def test_deliverable_separates_wholesale_upside_from_retail_scan_current(tmp_pat
     assert "DRAFT" in html
 
 
+def test_window_label_tracks_scan_span_not_a_hardcode(tmp_path):
+    """The rendered Window label must be the ACTUAL scan-week span (and week
+    count) and move with the data. The suite asserted upside dollars and the
+    basis words, never the window text — a hardcoded span matching the demo
+    would pass, the failure mode behind trade-spend's 'trailing 52 weeks'.
+
+    Both halves: assert each distinct span's full window substring is present,
+    AND assert the other span's substring (a stand-in for a hardcode) is absent."""
+    sp, ap, stp, pp = _write_all(tmp_path)
+    cfg = _cfg(tmp_path)
+    first_a = min(WEEKS)
+    early_b = first_a - timedelta(weeks=20)          # still a Saturday, on-grid
+    win_a = f"scan weeks {first_a.strftime('%b %d, %Y')} – {AS_OF.strftime('%b %d, %Y')} (13 weeks)"
+    win_b = f"scan weeks {early_b.strftime('%b %d, %Y')} – {AS_OF.strftime('%b %d, %Y')} (14 weeks)"
+
+    res_a = client_mode.run(str(cfg), str(tmp_path / "out_a"), _args(str(sp), str(ap), str(stp), str(pp)))
+    html_a = Path(res_a["report"]).read_text(encoding="utf-8")
+    assert win_a in html_a and win_b not in html_a
+
+    # Span B: one earlier scan week for an existing pair -> span + count move.
+    scans_b = pd.read_csv(sp)
+    scans_b = pd.concat([scans_b, pd.DataFrame(
+        [("S0", "CHP-AS-001", early_b.strftime("%Y-%m-%d"), 14, 70.0)], columns=scans_b.columns)],
+        ignore_index=True)
+    scans_b.to_csv(sp, index=False)
+    res_b = client_mode.run(str(cfg), str(tmp_path / "out_b"), _args(str(sp), str(ap), str(stp), str(pp)))
+    html_b = Path(res_b["report"]).read_text(encoding="utf-8")
+    assert win_b in html_b and win_a not in html_b   # not fixed to span A
+
+    for html in (html_a, html_b):
+        low = html.lower()
+        assert "trailing 52" not in low and "52-week" not in low and "52 weeks" not in low
+        assert "365d" not in low
+
+
 def test_missing_wholesale_price_blocks(tmp_path):
     sp, ap, stp, pp = _write_all(tmp_path)
     pd.read_csv(pp).drop(columns=["wholesale_price"]).to_csv(pp, index=False)
