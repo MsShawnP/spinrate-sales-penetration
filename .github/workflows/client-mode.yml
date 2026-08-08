@@ -38,6 +38,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install packages/lailara-palette/
           pip install -e ".[dev]"
-          pip install "lailara_engagement @ git+https://x-access-token:${LAILARA_ENGAGEMENT_TOKEN}@github.com/MsShawnP/lailara-engagement.git@v0.2.1#subdirectory=lib"
+          pip install "lailara_engagement @ git+https://x-access-token:${LAILARA_ENGAGEMENT_TOKEN}@github.com/MsShawnP/lailara-engagement.git@v0.2.2#subdirectory=lib"
       - name: Client-mode suite
         run: python -m pytest tests/test_client_mode.py -q
